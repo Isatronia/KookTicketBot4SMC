@@ -11,10 +11,10 @@
 
 # import libs
 import json
-import logging
-import asyncio
 from typing import Union
 from asyncio import Lock
+
+from value import PATH
 
 
 class UserServiceImpl:
@@ -23,7 +23,7 @@ class UserServiceImpl:
 
     def __init__(self):
         try:
-            with open('../cfg/user.json', 'r', encoding='utf-8') as f:
+            with open(PATH.USER_DATA, 'r', encoding='utf-8') as f:
                 self.data = json.load(f)
         except FileNotFoundError:
             self.data = {}
@@ -38,7 +38,7 @@ class UserServiceImpl:
     async def set(self, key, value) -> None:
         async with self.lock:
             self.data[key] = value
-            with open('../cfg/user.json', 'w', encoding='utf-8') as f:
+            with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     async def get_guild_cnt(self, user_id, guild_id) -> Union[int, None]:
@@ -64,7 +64,7 @@ class UserServiceImpl:
                     self.data[user_id][guild_id] =  cnt
             except KeyError:
                 self.data[user_id] = {guild_id: cnt}
-            with open('../cfg/user.json', 'w', encoding='utf-8') as f:
+            with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     async def open(self, user_id, guild_id):
@@ -76,7 +76,7 @@ class UserServiceImpl:
                     self.data[user_id][guild_id] += 1
             except KeyError:
                 self.data[user_id] = {guild_id: 1}
-            with open('../cfg/user.json', 'w', encoding='utf-8') as f:
+            with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     async def close(self, user_id, guild_id):
@@ -91,7 +91,7 @@ class UserServiceImpl:
                     self.data[user_id] = {guild_id: 0}
             except KeyError:
                 self.data[user_id] = {guild_id: 0}
-            with open('../cfg/user.json', 'w', encoding='utf-8') as f:
+            with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     # 重置某个用户在特定guild的所有数据
@@ -101,7 +101,7 @@ class UserServiceImpl:
                 self.data[user_id][guild_id] = 0
             else:
                 self.data[user_id] = {guild_id: 0}
-            with open('../cfg/user.json', 'w', encoding='utf-8') as f:
+            with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
 

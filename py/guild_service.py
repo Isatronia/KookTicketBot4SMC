@@ -11,9 +11,12 @@
 
 # import lib
 import json
+import os
 from asyncio import Lock
 from typing import Union
-from .user_service import UserService, UserServiceImpl
+import logging
+from user_service import UserService
+from value import PATH
 
 
 class GuildServiceImpl:
@@ -23,8 +26,9 @@ class GuildServiceImpl:
 
     def __init__(self):
         try:
-            with open('../cfg/data.json', 'r', encoding='utf-8') as f:
+            with open(PATH.GUILD_DATA, 'r', encoding='utf-8') as f:
                 self.data = json.load(f)
+                pass
         except FileNotFoundError:
             self.data = {}
 
@@ -44,6 +48,10 @@ class GuildServiceImpl:
     async def get_role(self, guild_id, role_name) -> Union[str, None]:
         async with self.io_lock:
             try:
+                with open(PATH.GUILD_DATA, 'r', encoding='utf-8') as f:
+                    self.data = json.load(f)
+                return self.data[guild_id]['role'][role_name]
+            except FileNotFoundError:
                 return self.data[guild_id]['role'][role_name]
             except KeyError:
                 return None
@@ -53,8 +61,10 @@ class GuildServiceImpl:
         async with self.io_lock:
             if guild_id not in self.data:
                 await self.init_guild(guild_id)
+            if 'role' not in self.data[guild_id]:
+                self.data[guild_id]['role'] = {}
             self.data[guild_id]['role'][role_tag] = role_id
-            with open('../cfg/data.json', 'w', encoding='utf-8') as f:
+            with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     # 获取服务器频道信息
@@ -73,7 +83,7 @@ class GuildServiceImpl:
             if 'channel' not in self.data[guild_id]:
                 self.data[guild_id]['channel'] = {}
             self.data[guild_id]['channel'][channel_tag] = channel_id
-            with open('../cfg/data.json', 'w', encoding='utf-8') as f:
+            with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     # 申请服务器Ticket
@@ -85,7 +95,7 @@ class GuildServiceImpl:
                 return None
             await userService.open(user_id, guild_id)
             self.data[guild_id]['cnt'] += 1
-            with open('../cfg/data.json', 'w', encoding='utf-8') as f:
+            with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
             return self.data[guild_id]['cnt']
 
@@ -123,6 +133,7 @@ class GuildService:
             async with GuildService.__lock:
                 if GuildService.__instance is None:
                     GuildService.__instance = GuildServiceImpl()
+        logging.info('Getted Instance: ' + str(GuildService.__instance))
         return GuildService.__instance
 
     def __new__(cls):

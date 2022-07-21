@@ -10,6 +10,7 @@
 '''
 
 # import lib
+import asyncio
 import json
 import logging
 import time
@@ -20,7 +21,8 @@ from khl import Bot, Message, MessageTypes, EventTypes, User, Event
 from khl.card import CardMessage, Card, Module, Element, Types, Struct
 
 from py.ticket_controller import *
-from py.value import AUTH
+from py.mute_controller import *
+from py.value import AUTH, ROLE, get_time
 
 # Global
 
@@ -34,12 +36,13 @@ with open('cfg/config.json', 'r', encoding='utf-8') as f:
 bot = Bot(token=config['token'])
 
 
+# #############################################################################
 # 鉴权模块
 # #############################################################################
 async def auth(user: Union[User, str], guild: Union[Guild, None] = None) -> int:
     user_id = user.id if isinstance(user, User) else user
     manager = await GuildService.get_instance()
-    staff = await manager.get_role(guild.id, 'staff')
+    staff = await manager.get_role(guild.id, ROLE.STAFF)
     user_authority = 0
     if guild is not None:
         g_user = await guild.fetch_user(user_id)
@@ -52,17 +55,18 @@ async def auth(user: Union[User, str], guild: Union[Guild, None] = None) -> int:
                 break
         # 再检查是不是员工
         # 服务器中角色列表是一个long long数组。
-        for role in g_user.roles:
-            if role == staff.id:
-                # 是员工，标记身份并结束循环
-                user_authority |= AUTH.STAFF
-                break
+        if staff is not None:
+            for role in g_user.roles:
+                if role == int(staff):
+                    # 是员工，标记身份并结束循环
+                    user_authority |= AUTH.STAFF
+                    break
     return user_authority
 
 
 # 封装的鉴权函数
 async def check_authority(msg: Message, level: int = 1) -> bool:
-    if level & await auth(msg.author, msg.ctx.guild):
+    if level & await auth(msg.author, msg.ctx.guild) != 0:
         return True
     await msg.reply('你没有权限使用这个命令。')
     return False
@@ -74,7 +78,7 @@ async def check_authority(msg: Message, level: int = 1) -> bool:
 # 发送可以创建Ticket的消息
 @bot.command(name='setup')
 async def setupTicketBot(msg: Message):
-    if not await check_authority(msg, AUTH.STAFF):
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
     cm = CardMessage()
     cd = Card(Module.Header('点击下方按钮创建一张Ticket'),
@@ -106,60 +110,96 @@ async def selectRole(msg: Message, rolename: str):
 # 静音用户（设置为静音角色）
 @bot.command(name='mute')
 async def mute(msg: Message, username: str, contains: str, reason: str):
-    if not await check_authority(msg, AUTH.STAFF):
+    def resolve(contains: str):
+        # 根据xm, xh解析禁言时间，m表示分钟，h表示小时
+        if contains[-1] == 'm' or contains[-1] == 'M':
+            return int(contains[:-1]) * 60
+        elif contains[-1] == 'h' or contains[-1] == 'H':
+            return int(contains[:-1]) * 60 * 60
+        else:
+            return int(contains) * 60
+
+    logging.info(get_time() + 'trying mute: ' + username + ' ' + contains + ' for ' + reason)
+
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
+        logging.info(get_time() + 'Unauthorized, mute action rejected.')
         return
     manager = await GuildService.get_instance()
-    mute_role = await manager.get_role(msg.ctx.guild.id, 'mute')
+    mute_role = await manager.get_role(msg.ctx.guild.id, ROLE.MUTE)
     if mute_role is None:
+        logging.debug(get_time() + 'mute role not found. cur data is : + \n' + str(manager.data))
         await msg.ctx.channel.send(CardMessage(Card(
-            Module.Header('错误'),
-            Module.Section('没有设置Mute角色')
+            Module.Header('Error occurred'),
+            Module.Section('还没有设置Mute角色啊 kora!!')
         )), temp_target_id=msg.author.id)
         return
     users = await msg.ctx.guild.list_user(msg.ctx.channel)
     for user in users:
         if user.username == username:
-
-            await msg.ctx.guild.grant_role(user, mute_role)
+            try:
+                time = resolve(contains)
+                logging.info(get_time() + 'mute time resolved: ' + str(time))
+                await mute_user(msg, user, time, reason)
+            except Exception as e:
+                await msg.reply(str(e), is_temp=True)
+                await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
             return
 
 
 # 取消静音用户（移除静音角色）
 @bot.command(name='unmute')
 async def unmute(msg: Message, username: str):
-    if not await check_authority(msg, 2):
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
     manager = await GuildService.get_instance()
-    mute_role = await manager.get_role(msg.ctx.guild.id, 'mute')
+    mute_role = await manager.get_role(msg.ctx.guild.id, ROLE.MUTE)
     if mute_role is None:
         await msg.ctx.channel.send(CardMessage(Card(
-            Module.Header('错误'),
-            Module.Section('没有设置Mute角色')
+            Module.Header('Error occurred'),
+            Module.Section('还没有设置Mute角色啊 kora!!')
         )), temp_target_id=msg.author.id)
         return
     users = await msg.ctx.guild.list_user(msg.ctx.channel)
     for user in users:
         if user.username == username:
-            await msg.ctx.guild.revoke_role(user, mute_role)
-            return
+            try:
+                await unmute_user(msg, user)
+                return
+            except Exception as e:
+                await msg.reply(str(e), is_temp=True)
+                await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
+                return
 
 
 # Manual
 @bot.command()
 async def man(msg: Message, cmd: str = ''):
-    if not check_authority(msg, 2):
+    if not check_authority(msg, AUTH.STAFF):
         return
     await manual(msg, cmd)
 
 
+# clean user Record
 @bot.command(name='clean')
 async def clean_user(msg: Message, user_id: str):
-    if not check_authority(msg, 1):
+    if not check_authority(msg, AUTH.ADMIN):
         return
     user_service = await UserService.get_instance()
     await user_service.reset(user_id, msg.ctx.guild.id)
     await msg.reply('已清除用户' + user_id + '的数据。', is_temp=True)
 
+
+# update Channel name
+@bot.command(name='rename')
+async def rename(msg: Message, name: str):
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
+        return
+    try:
+        await msg.ctx.channel.update(name=name)
+        await msg.reply('重命名成功=w=。', is_temp=True)
+    except Exception as e:
+        await msg.reply(str(e), is_temp=True)
+        await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
 
 #############################################################################################
 # 事件处理模块
@@ -167,41 +207,68 @@ async def clean_user(msg: Message, user_id: str):
 
 @bot.on_event(EventTypes.MESSAGE_BTN_CLICK)
 async def btnclk(b: Bot, event: Event):
-    logging.info('event received... body is:\n\t' + str(event.body))
+    async def check_auth(user_auth, auth):
+        if (auth & user_auth) != auth:
+            channel = await b.fetch_public_channel(event.body['target_id'])
+            await channel.send("您没有权限进行此操作", temp_target_id=event.body['user_id'])
+            return False
+        return True
+
+
+    logging.info(get_time() + 'event received... body is:\n' + str(event.body))
+
+
     if event.body['value'] == 'create_ticket':
         await create_ticket(b, event)
         return
-    # 处理关闭ticket的事件, 关闭的信息开头为closeTicket_
-    elif event.body['value'].startswith('closeTicket_'):
-        args = event.body['value'].split('_')
-        await close_ticket(b, event, args[1], args[2])
-        return
-    # 对第一次按钮点击做询问
+
+    # 关闭Ticket时对第一次按钮点击做询问
     elif event.body['value'].startswith('preCloseTicket_'):
         args = event.body['value'].split('_')
         await pre_close_ticket(b, event, args[1], args[2])
         return
 
+    # 处理关闭ticket的事件, 关闭的信息开头为closeTicket_
+    elif event.body['value'].startswith('closeTicket_'):
+        args = event.body['value'].split('_')
+        await close_ticket(b, event, args[1], args[2])
+        return
+
     # 查询消息发送的服务器
     guild = await b.fetch_guild(event.body['guild_id'])
     # 下列为高权限操作
-    # 对员工开放操作
-    # 鉴权
-    if 1 & await auth(event.body['user_id'], guild):
-        channel = await b.fetch_public_channel(event.body['target_id'])
-        await channel.send("您没有权限进行此操作", temp_target_id=event.body['user_id'])
-        return
+    user_authority = await auth(event.body['user_id'], guild)
 
-    # 对管理员开放的操作
-    # 鉴权
-    if 2147483648 & await auth(event.body['user_id'], guild):
-        channel = await b.fetch_public_channel(event.body['target_id'])
-        await channel.send("您没有权限进行此操作", temp_target_id=event.body['user_id'])
-        return
+    # 删除Ticket
+    if event.body['value'].startswith('deleteTicket_'):
+        logging.info('delete ticket invoked')
+        if not await check_auth(user_authority, AUTH.STAFF):
+            return
+        args = event.body['value'].split('_')
+        await delete_ticket(b, event, args[1], args[2])
+
+    # 重开Ticket
+    elif event.body['value'].startswith('reopenTicket_'):
+        logging.info('reopen ticket invoked')
+        if not await check_auth(user_authority, AUTH.STAFF):
+            return
+        args = event.body['value'].split('_')
+        await reopen_ticket(b, event, args[1], args[2])
+
+    # 设置角色
     if event.body['value'].startswith('setRole_'):
+        if not await check_auth(user_authority, AUTH.ADMIN):
+            return
         args = event.body['value'].split('_')
         await set_role(b, event, args[1], args[2])
     return
+
+# #########################################################################################
+# 定时任务
+# #########################################################################################
+@bot.task.add_interval(minutes=1)
+async def check():
+    await check_all(bot)
 
 
 # 测试指令

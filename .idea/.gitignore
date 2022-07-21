@@ -3,5 +3,6 @@
 /workspace.xml
 *.xml
 *.iml
-*.json
+
+/cfg/
 *.txt
