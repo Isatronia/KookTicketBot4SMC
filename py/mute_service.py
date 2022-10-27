@@ -30,7 +30,7 @@ import time
 import json
 from asyncio import Lock
 from typing import Union
-from .value import PATH
+from value import PATH
 
 
 class MuteServiceImpl:
@@ -108,14 +108,17 @@ class MuteServiceImpl:
                     json.dump(self.data, f, ensure_ascii=False, indent=4)
 
 
-class MuteService:
-    lock: Lock = Lock()
-    instance: MuteServiceImpl = None
+mute_service = MuteServiceImpl()
 
-    @staticmethod
-    async def get_instance():
-        if MuteService.instance is None:
-            async with MuteService.lock:
-                if MuteService.instance is None:
-                    MuteService.instance = MuteServiceImpl()
-        return MuteService.instance
+
+# class MuteService:
+#     lock: Lock = Lock()
+#     instance: MuteServiceImpl = None
+#
+#     @staticmethod
+#     async def get_instance():
+#         if MuteService.instance is None:
+#             async with MuteService.lock:
+#                 if MuteService.instance is None:
+#                     MuteService.instance = MuteServiceImpl()
+#         return MuteService.instance

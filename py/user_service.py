@@ -61,7 +61,7 @@ class UserServiceImpl:
                 try:
                     self.data[user_id][guild_id] = cnt
                 except KeyError:
-                    self.data[user_id][guild_id] =  cnt
+                    self.data[user_id][guild_id] = cnt
             except KeyError:
                 self.data[user_id] = {guild_id: cnt}
             with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
@@ -105,22 +105,22 @@ class UserServiceImpl:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
 
+user_service = UserServiceImpl()
 
-
-class UserService:
-    __instance: UserServiceImpl = None
-    __lock: Lock = Lock()
-
-    @staticmethod
-    async def get_instance() -> UserServiceImpl:
-        if UserService.__instance is None:
-            async with UserService.__lock:
-                if UserService.__instance is None:
-                    UserService.__instance = UserServiceImpl()
-        return UserService.__instance
-
-    def __new__(cls, *args, **kwargs):
-        with UserService.__lock:
-            if not isinstance(cls.__instance, cls):
-                cls.__instance = cls.__instance or cls(*args, **kwargs)
-        return cls.__instance
+# class UserService:
+#     __instance: UserServiceImpl = None
+#     __lock: Lock = Lock()
+#
+#     @staticmethod
+#     async def get_instance() -> UserServiceImpl:
+#         if UserService.__instance is None:
+#             async with UserService.__lock:
+#                 if UserService.__instance is None:
+#                     UserService.__instance = UserServiceImpl()
+#         return UserService.__instance
+#
+#     def __new__(cls, *args, **kwargs):
+#         with UserService.__lock:
+#             if not isinstance(cls.__instance, cls):
+#                 cls.__instance = cls.__instance or cls(*args, **kwargs)
+#         return cls.__instance

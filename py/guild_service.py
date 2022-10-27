@@ -11,11 +11,10 @@
 
 # import lib
 import json
-import os
 from asyncio import Lock
 from typing import Union
 import logging
-from user_service import UserService
+from user_service import user_service
 from value import PATH
 
 
@@ -56,6 +55,18 @@ class GuildServiceImpl:
             except KeyError:
                 return None
 
+    async def get_roles(self, guild_id) -> Union[dict, None]:
+        async with self.io_lock:
+            try:
+                with open(PATH.GUILD_DATA, 'r', encoding='utf-8') as f:
+                    self.data = json.load(f)
+                return self.data[guild_id]['role']
+            except FileNotFoundError:
+                return self.data[guild_id]['role']
+            except KeyError:
+                return None
+
+
     # 设置服务器角色信息
     async def set_role(self, guild_id, role_tag, role_id):
         async with self.io_lock:
@@ -89,11 +100,11 @@ class GuildServiceImpl:
     # 申请服务器Ticket
     async def apply(self, guild_id, user_id) -> Union[int, None]:
         async with self.io_lock:
-            userService = await UserService.get_instance()
-            userGuildCnt = await userService.get_guild_cnt(user_id, guild_id)
+
+            userGuildCnt = await user_service.get_guild_cnt(user_id, guild_id)
             if 2 <= userGuildCnt:
                 return None
-            await userService.open(user_id, guild_id)
+            await user_service.open(user_id, guild_id)
             self.data[guild_id]['cnt'] += 1
             with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
@@ -102,7 +113,7 @@ class GuildServiceImpl:
     # 释放服务器Ticket
     async def close(self, guild_id, user_id):
         async with self.io_lock:
-            userService = await UserService.get_instance()
+            userService = await user_service.get_instance()
             await userService.close(user_id, guild_id)
 
     # 检查指定服务器是否有效
@@ -122,29 +133,33 @@ class GuildServiceImpl:
         await self.set_role(guild_id, 'role', role_id)
 
 
-# 单例模式， 保证只有一个id_dict实例
-class GuildService:
-    __instance: GuildServiceImpl = None
-    __lock = Lock()
+# py是天生的单例模式
+guild_service = GuildServiceImpl()
 
-    @staticmethod
-    async def get_instance():
-        if GuildService.__instance is None:
-            async with GuildService.__lock:
-                if GuildService.__instance is None:
-                    GuildService.__instance = GuildServiceImpl()
-        logging.info('Getted Instance: ' + str(GuildService.__instance))
-        return GuildService.__instance
 
-    def __new__(cls):
-        if cls.__instance is None:
-            with cls.__lock:
-                if cls.__instance is None:
-                    cls.__instance = GuildServiceImpl()
-        return cls.__instance
-
-    def __getitem__(self, key):
-        return self.__instance[key]
-
-    def __setitem__(self, key, value):
-        self.__instance[key] = value
+# # 单例模式， 保证只有一个id_dict实例
+# class GuildService:
+#     __instance: GuildServiceImpl = None
+#     __lock = Lock()
+#
+#     @staticmethod
+#     async def get_instance():
+#         if GuildService.__instance is None:
+#             async with GuildService.__lock:
+#                 if GuildService.__instance is None:
+#                     GuildService.__instance = GuildServiceImpl()
+#         logging.info('Getted Instance: ' + str(GuildService.__instance))
+#         return GuildService.__instance
+#
+#     def __new__(cls):
+#         if cls.__instance is None:
+#             with cls.__lock:
+#                 if cls.__instance is None:
+#                     cls.__instance = GuildServiceImpl()
+#         return cls.__instance
+#
+#     def __getitem__(self, key):
+#         return self.__instance[key]
+#
+#     def __setitem__(self, key, value):
+#         self.__instance[key] = value
