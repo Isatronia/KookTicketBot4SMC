@@ -14,7 +14,7 @@ import json
 from typing import Union
 from asyncio import Lock
 
-from value import PATH
+from .value import PATH
 
 
 class UserServiceImpl:

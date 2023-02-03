@@ -14,9 +14,9 @@ import logging
 
 import time
 from khl import Bot, Message, User
-from guild_service import guild_service
-from mute_service import mute_service
-from value import ROLE
+from .guild_service import guild_service
+from .mute_service import mute_service
+from .value import ROLE
 
 
 async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
