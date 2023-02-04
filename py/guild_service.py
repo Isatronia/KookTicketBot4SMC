@@ -14,8 +14,8 @@ import json
 from asyncio import Lock
 from typing import Union
 import logging
-from user_service import user_service
-from value import PATH
+from .user_service import user_service
+from .value import PATH
 
 
 class GuildServiceImpl:
