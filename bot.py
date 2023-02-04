@@ -19,6 +19,7 @@ from khl import EventTypes
 from py.ticket_controller import *
 from py.mute_controller import *
 from py.value import AUTH, ROLE, get_time
+from py.parser import *
 
 # Global
 
@@ -137,16 +138,8 @@ async def listrole(msg: Message):
 # 静音用户（设置为静音角色）
 @bot.command(name='mute')
 async def mute(msg: Message, userid: str, contains: str, reason: str):
-    # 时间解析
-    def resolve(contains: str):
-        # 根据xm, xh解析禁言时间，m表示分钟，h表示小时
-        if contains[-1] == 'm' or contains[-1] == 'M':
-            return int(contains[:-1]) * 60
-        elif contains[-1] == 'h' or contains[-1] == 'H':
-            return int(contains[:-1]) * 60 * 60
-        else:
-            return int(contains) * 60
 
+    # Log
     await log('trying mute: ' + userid + ' ' + contains + ' for ' + reason)
 
     # 鉴权
@@ -154,10 +147,13 @@ async def mute(msg: Message, userid: str, contains: str, reason: str):
         logging.info(get_time() + 'Unauthorized, mute action rejected.')
         return
 
+    # Log
     await log(
         'Authorized. begin mute process mute' + userid + ' in guild' + msg.ctx.guild.name + '(id is: ' + msg.ctx.guild.id + ')')
-    # 检查静音用户是否存在，并设置静音用户
+
+    # 检查静音用户是否存在，并设置静音角色 （Tag）
     mute_role = await guild_service.get_role(msg.ctx.guild.id, ROLE.MUTE)
+    # 错误检测，没有设置静音角色（Tag）
     if mute_role is None:
         logging.debug(get_time() + 'mute role not found. cur data is : + \n' + str(guild_service.data))
         await msg.ctx.channel.send(CardMessage(Card(
@@ -167,35 +163,31 @@ async def mute(msg: Message, userid: str, contains: str, reason: str):
         return
 
     try:
-        time = resolve(contains)
+        time = await timeParser(contains)
     except Exception as e:
         await msg.reply(str(e), is_temp=True)
         await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
 
     logging.info(get_time() + 'mute time resolved: ' + str(time))
-    await mute_user(msg, await bot.fetch_user(userid), time, reason)
+    await mute_user(bot, msg, await bot.client.fetch_user(userid), time, reason)
     logging.info(get_time() + 'muted' + userid + ' ' + contains + ' for ' + reason)
-
-    # users = await msg.ctx.guild.list_user(msg.ctx.channel)
-    # for user in users:
-    #     if user.username == userid:
-    #         try:
-    #             time = resolve(contains)
-    #             logging.info(get_time() + 'mute time resolved: ' + str(time))
-    #             await mute_user(msg, user, time, reason)
-    #         except Exception as e:
-    #             await msg.reply(str(e), is_temp=True)
-    #             await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
-    #         return
 
 
 # 取消静音用户（移除静音角色）
 @bot.command(name='unmute')
 async def unmute(msg: Message, userid: str):
+
+    # 鉴权
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
+
+    # log
     await log('unmute user ' + userid + ' at ' + msg.ctx.guild.name + '(id is {:} )'.format(msg.ctx.guild.id))
+
+    # 获取静音用户
     mute_role = await guild_service.get_role(msg.ctx.guild.id, ROLE.MUTE)
+
+    # 错误检测
     if mute_role is None:
         await msg.ctx.channel.send(CardMessage(Card(
             Module.Header('Error occurred'),
@@ -203,16 +195,17 @@ async def unmute(msg: Message, userid: str):
         )), temp_target_id=msg.author.id)
         return
 
-    user = await bot.fetch_user(userid)
+    # 获取用户
+    user = await bot.client.fetch_user(userid)
+
     try:
-        await unmute_user(msg, user)
-        return
+        await unmute_user(bot, msg, user)
     except Exception as e:
         await log(str(e))
         await msg.reply(str(e), is_temp=True)
         await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
-        return
 
+    return
 
 
 # Manual
