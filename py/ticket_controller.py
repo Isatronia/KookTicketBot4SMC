@@ -25,36 +25,6 @@ from .guild_service import guild_service
 from .value import PATH, get_time
 
 
-async def gen_basic_manual(user: User):
-    cm = CardMessage()
-    cd = Card()
-    cd.append(Module.Header('帮助手册'))
-
-    with open(PATH.MAN_DATA, 'r', encoding='utf-8') as f:
-        for line in f:
-            cd.append(Module.Section(Element.Text(content=line, type=Types.Text.KMD)))
-
-    cm.append(cd)
-    return cm
-
-
-async def manual(msg: Message, txt: str):
-    if txt == '':
-        await msg.reply(await gen_basic_manual(msg.author), is_temp=True)
-    else:
-        try:
-            with open(PATH.MAN_PATH + txt + '.man') as f:
-                cm = CardMessage()
-                cd = Card()
-                cd.append(Module.Header('帮助手册'))
-                for line in f:
-                    cd.append(Module.Section(Element.Text(content=line, type=Types.Text.KMD)))
-                cm.append(cd)
-                await msg.ctx.channel.send(cm)
-        except FileNotFoundError as e:
-            return
-    return
-
 
 async def set_role(b: Bot, event: Event, tag: str, role: str):
     logging.info('setting role...')

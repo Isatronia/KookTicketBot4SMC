@@ -20,6 +20,7 @@ from py.ticket_controller import *
 from py.mute_controller import *
 from py.value import AUTH, ROLE, get_time
 from py.parser import *
+from py.manul_controller import manual
 
 # Global
 
