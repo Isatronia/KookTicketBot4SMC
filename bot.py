@@ -121,6 +121,7 @@ async def selectRole(msg: Message, rolename: str):
     await msg.ctx.channel.send(cm)
     return
 
+
 @bot.command(name='listrole')
 async def listrole(msg: Message):
     if not await check_authority(msg, AUTH.ADMIN):
@@ -128,18 +129,16 @@ async def listrole(msg: Message):
     await log('listting role...')
     roles = await guild_service.get_roles(msg.ctx.guild.id)
     cm = CardMessage()
-    cd = Card(Module.Header('当前所有角色为:'))
+    cd = Card(Module.Header('[DEBUG]当前所有角色为:'))
     for k in roles:
         cd.append(Module.Section(Element.Text(content=k, type=Types.Text.KMD)))
     cm.append(cd)
     await msg.reply(cm)
 
 
-
 # 静音用户（设置为静音角色）
 @bot.command(name='mute')
 async def mute(msg: Message, userid: str, contains: str, reason: str):
-
     # Log
     await log('trying mute: ' + userid + ' ' + contains + ' for ' + reason)
 
@@ -164,20 +163,19 @@ async def mute(msg: Message, userid: str, contains: str, reason: str):
         return
 
     try:
-        time = await timeParser(contains)
+        mute_time = await timeParser(contains)
     except Exception as e:
         await msg.reply(str(e), is_temp=True)
         await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
 
-    logging.info(get_time() + 'mute time resolved: ' + str(time))
-    await mute_user(bot, msg, await bot.client.fetch_user(userid), time, reason)
+    logging.info(get_time() + 'mute time resolved: ' + str(mute_time))
+    await mute_user(bot, msg, await bot.client.fetch_user(userid), mute_time, reason)
     logging.info(get_time() + 'muted' + userid + ' ' + contains + ' for ' + reason)
 
 
 # 取消静音用户（移除静音角色）
 @bot.command(name='unmute')
 async def unmute(msg: Message, userid: str):
-
     # 鉴权
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
@@ -242,10 +240,11 @@ async def rename(msg: Message, name: str):
 
 
 @bot.command(name='dice')
-async def dice(msg:Message, mx: int):
+async def dice(msg: Message, mx: int):
     res = random.randint(1, mx)
     await msg.reply("骰子结果是：{:}".format(res))
     await log(str(msg.author.nickname) + '投了个骰子，结果是:' + str(res))
+
 
 #############################################################################################
 # 事件处理模块
