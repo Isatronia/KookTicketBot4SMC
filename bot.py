@@ -86,22 +86,9 @@ async def log(o):
 # 发送可以创建Ticket的消息
 @bot.command(name='setup')
 async def setupTicketBot(msg: Message, role: str = 'staff'):
-    await log('setting up ticket generator... role is:' + role)
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
-    if await guild_service.get_role(msg.ctx.guild.id, role) is None:
-        await log('role not set, process end.')
-        await msg.reply('还没有设定' + role + '角色', is_temp=True)
-        return
-    cm = CardMessage()
-    cd = Card(Module.Header(Element.Text('点击下方按钮创建一张只有 {:} 能看到的Ticket'.format(role))),
-              Module.ActionGroup(
-                  Element.Button('Create Ticket!', 'create_ticket_' + role, Types.Click.RETURN_VAL)
-              )
-              )
-    cm.append(cd)
-    await msg.ctx.channel.send(cm)
-    await log('Generator create succeed.')
+    await setup_ticket_generator(bot, msg, role)
 
 
 # 设置服务器角色

@@ -25,7 +25,6 @@ from .guild_service import guild_service
 from .value import PATH, get_time
 
 
-
 async def set_role(b: Bot, event: Event, tag: str, role: str):
     logging.info('setting role...')
     await guild_service.record_if_not_exist(event.body['guild_id'])
@@ -63,16 +62,20 @@ async def create_ticket(b: Bot, event: Event, ticket_role='staff') -> Union[str,
     async def gen_ticket(guild: Guild, cate: ChannelCategory):
 
         sender = await guild.fetch_user(event.body['user_id'])
+
         # 查询当前用户已经创建的Ticket数量
         ticket_cnt = await guild_service.apply(guild.id, event.body['user_id'])
         logging.info('ticket count: ' + str(ticket_cnt))
+
         # 如果开太多票会被禁止开票
         if ticket_cnt is None:
             cnl = await b.client.fetch_public_channel(event.body['target_id'])
             await cnl.send("您已经发送了过多Ticket,请等待关闭后继续发送", temp_target_id=event.body['user_id'])
             return None
+
         # 取得服务器全部角色， 用于筛选 @全体成员 和 目标角色
         roles = await guild.fetch_roles()
+
         # 创建一个新频道, 要用try来防止到达上限造成的bug
         try:
             cnl = await cate.create_channel('ticket_' + str(ticket_cnt) + ' for ' + ticket_role, type=ChannelTypes.TEXT)
@@ -83,13 +86,16 @@ async def create_ticket(b: Bot, event: Event, ticket_role='staff') -> Union[str,
             await user_service.close(event.body['user_id'], guild.id)
             logging.error(e)
             return None
+
         for role in roles:
             if role.id == 0:
                 await cnl.update_role_permission(role, deny=(2048 | 4096))
             elif role.id == target_role_id:
                 await cnl.update_role_permission(role, allow=(2048 | 4096))
+
         # 权限设置
         await cnl.update_user_permission(sender, allow=(2048 | 4096))
+
         # 发送默认消息
         await cnl.send(CardMessage(Card(
             Module.Header('Ticket ' + str(ticket_cnt)),
@@ -104,6 +110,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role='staff') -> Union[str,
             config = json.load(f)
         await cnl.send('(met)' + sender.id + '(met) 你的ticket已经建好啦！\n请直接在这里提出你的问题，我们的员工看到后会给您解答。', type=MessageTypes.KMD)
         await cnl.send('(rol)' + str(target_role_id) + '(rol)', type=MessageTypes.KMD)
+
         try:
             if config['new_ticket'] is not None and config['new_ticket'] != "":
                 await cnl.send(config['new_ticket'], type=MessageTypes.KMD)
@@ -115,8 +122,6 @@ async def create_ticket(b: Bot, event: Event, ticket_role='staff') -> Union[str,
             pass
         logging.info('ticket created.')
         return cnl.id
-
-
 
     logging.info('TicketBot: creating ticket at guild ' + guild.name)
     # 取得全部分类，筛选出Ticket分类
@@ -140,6 +145,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role='staff') -> Union[str,
     return
 
 
+# 关闭Ticket前的确认
 async def pre_close_ticket(b: Bot, event: Event, channel: str, user: str):
     logging.info('pre close ticket...')
     cnl = await b.client.fetch_public_channel(channel)
@@ -153,6 +159,7 @@ async def pre_close_ticket(b: Bot, event: Event, channel: str, user: str):
     return
 
 
+# 关闭Ticket
 async def close_ticket(b: Bot, event: Event, channel: str, user: str):
     logging.info('closing ticket...')
     cnl = await b.client.fetch_public_channel(channel)
@@ -170,6 +177,7 @@ async def close_ticket(b: Bot, event: Event, channel: str, user: str):
     return
 
 
+# 重开Ticket
 async def reopen_ticket(b: Bot, event: Event, channel: str, user: str):
     logging.info('reopening ticket...')
     cnl = await b.client.fetch_public_channel(channel)
@@ -191,3 +199,21 @@ async def delete_ticket(b: Bot, event: Event, channel: str, user: str):
     guild = await b.client.fetch_guild(event.body['guild_id'])
     await guild.delete_channel(cnl)
     return
+
+
+async def setup_ticket_generator(b: Bot, msg: Message, type: str):
+    logging.info('Setting up Ticket Generator')
+
+    if await guild_service.get_role(msg.ctx.guild.id, type) is None:
+        logging.info('role not set, process end.')
+        await msg.reply('还没有设定' + type + '角色', is_temp=True)
+        return
+    cm = CardMessage()
+    cd = Card(Module.Header(Element.Text('点击下方按钮创建一张只有 {:} 能看到的Ticket'.format(type))),
+              Module.ActionGroup(
+                  Element.Button('Create Ticket!', 'create_ticket_' + type, Types.Click.RETURN_VAL)
+                )
+              )
+    cm.append(cd)
+    await msg.ctx.channel.send(cm)
+    logging.info('Generator create succeed.')
