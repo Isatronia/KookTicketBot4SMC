@@ -1,6 +1,6 @@
 # -*- encoding: utf-8 -*-
 '''
-@File    :   manul_controller.py    
+@File    :   manual_controller.py
 @Contact :   naragnova88@gmail.com
 @License :   CC BY-NC-SA
 
