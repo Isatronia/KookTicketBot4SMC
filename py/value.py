@@ -10,14 +10,13 @@
 '''
 
 # import lib
-import time
 
-
+# 角色基础权限控制
 class AUTH:
     STAFF = 1
     ADMIN = 2147483648
 
-
+# 配置文件路径
 class PATH:
     GUILD_DATA = './cfg/data.json'
     USER_DATA = './cfg/user.json'
@@ -25,12 +24,9 @@ class PATH:
     MAN_DATA = './cfg/usr_man.txt'
     MAN_PATH = './cfg/man/'
 
-
+# 角色标识
 class ROLE:
     MUTE = 'mute'
     STAFF = 'staff'
 
 
-def get_time() -> str:
-    sz = time.strftime('%Y-%m-%d %H:%M:%S')
-    return '[' + sz + '] : '

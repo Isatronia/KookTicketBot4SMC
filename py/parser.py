@@ -13,6 +13,7 @@
 
 import asyncio
 import re
+import time
 
 
 async def timeParser(time: str) -> int:
@@ -45,3 +46,8 @@ async def sec2str(seconds: int) -> str:
     minutes, sec = divmod(seconds, 60)
     hour, minutes = divmod(minutes, 60)
     return '{:}小时{:}分'.format(hour, minutes)
+
+
+def get_time() -> str:
+    sz = time.strftime('%Y-%m-%d %H:%M:%S')
+    return '[' + sz + '] : '

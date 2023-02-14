@@ -10,15 +10,13 @@
 '''
 
 # import lib
-import json
-import logging
 import random
 
 from khl import EventTypes
 
 from py.ticket_controller import *
 from py.mute_controller import *
-from py.value import AUTH, ROLE, get_time
+from py.value import AUTH, ROLE
 from py.parser import *
 from py.manual_controller import manual
 

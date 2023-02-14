@@ -22,7 +22,8 @@ from typing import Union
 
 from .user_service import user_service
 from .guild_service import guild_service
-from .value import PATH, get_time
+from .value import PATH
+from parser import get_time
 
 
 async def gen_basic_manual(user: User):
