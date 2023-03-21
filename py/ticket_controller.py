@@ -23,7 +23,7 @@ from typing import Union
 from .user_service import user_service
 from .guild_service import guild_service
 from .value import PATH
-from parser import get_time
+from .parser import get_time
 
 
 async def gen_basic_manual(user: User):
@@ -83,8 +83,9 @@ async def create_ticket(b: Bot, event: Event, ticket_role='staff') -> Union[str,
     guild = await b.client.fetch_guild(event.body['guild_id'])
 
     try:
-        await guild_service.record_if_not_exist(guild.id)
+        await guild_service.check_guild(guild.id)
         target_role_id = await guild_service.get_role(guild.id, ticket_role)
+        logging.info('Target Role id is: {:}'.format(target_role_id))
         if target_role_id is not None:
             target_role_id = int(target_role_id)
     except Exception as e:
@@ -106,7 +107,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role='staff') -> Union[str,
         roles = await guild.fetch_roles()
         # 创建一个新频道, 要用try来防止到达上限造成的bug
         try:
-            cnl = await cate.create_channel('ticket_' + str(ticket_cnt) + ' for ' + ticket_role, type=ChannelTypes.TEXT)
+            cnl = await cate.create_text_channel('ticket_' + str(ticket_cnt) + ' for ' + ticket_role)
         except khl.requester.HTTPRequester.APIRequestFailed as e:
             cnl = await b.client.fetch_public_channel(event.body['target_id'])
             await cnl.send("Ticket数量已达Kook支持的上限，请等待原先Ticket关闭后继续申请。\n我们为对您造成的不便深表歉意。",
