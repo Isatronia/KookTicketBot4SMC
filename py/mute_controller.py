@@ -22,7 +22,7 @@ from .value import ROLE
 async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
     # 为用户设置禁言角色并且私聊发送原因
     # 获取禁言角色
-    muted_role = await guild_service.get_role(msg.ctx.guild.id, ROLE.MUTE)
+    muted_role = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
 
     # 设置禁言时间
     mute_time = time.time() + mute_time
@@ -36,7 +36,7 @@ async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
 async def unmute_user(msg: Message, user: User):
     # 为用户设置禁言角色并且私聊发送原因
     # 获取禁言角色
-    muted_role = await guild_service.get_role(msg.ctx.guild.id, ROLE.MUTE)
+    muted_role = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
 
     # 为用户设置禁言角色
     await msg.ctx.guild.revoke_role(user, muted_role)
@@ -52,7 +52,7 @@ async def check_all(bot: Bot):
         guild_id = rec['guild_id']
         guild = await bot.client.fetch_guild(guild_id)
         user = await bot.client.fetch_user(user_id)
-        role = await guild_service.get_role(guild_id, ROLE.MUTE)
+        role = await guild_service.get_role_by_name(guild_id, ROLE.MUTE)
         try:
             await mute_service.unmute(user_id, guild_id)
             await guild.revoke_role(user, role)

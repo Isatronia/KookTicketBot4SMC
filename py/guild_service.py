@@ -14,8 +14,10 @@ import json
 from asyncio import Lock
 from typing import Union
 import logging
+
 from .user_service import user_service
 from .value import PATH
+from .utils import log
 
 '''
 data.json - GUILD DATA
@@ -28,6 +30,8 @@ data.json - GUILD DATA
 - channel 频道（暂时没用）
 '''
 
+LOG_HEADER = ' [guild_service.py] '
+
 
 class GuildServiceImpl:
     data: dict = {}
@@ -35,6 +39,7 @@ class GuildServiceImpl:
     io_lock: Lock = Lock()
     init_lock: Lock = Lock()
 
+    # 初始化GuildService
     def __init__(self):
         try:
             with open(PATH.GUILD_DATA, 'r', encoding='utf-8') as f:
@@ -43,7 +48,7 @@ class GuildServiceImpl:
         except FileNotFoundError:
             self.data = {}
 
-    # Save data to file
+    # 把数据保存到本地文件
     async def save_data(self) -> None:
         async with self.io_lock:
             try:
@@ -53,7 +58,7 @@ class GuildServiceImpl:
                 logging.error(str(e))
         return None
 
-    # Read data from file
+    # 从本地文件读取数据
     async def read_data(self) -> None:
         async with self.io_lock:
             try:
@@ -64,6 +69,7 @@ class GuildServiceImpl:
                 self.data = {}
 
     # 初始化服务器信息
+    # 新增服务器时初始化数据
     async def init_guild(self, guild_id):
         await  self.read_data()
         if guild_id not in self.data:
@@ -72,7 +78,7 @@ class GuildServiceImpl:
                     self.data[guild_id] = {'cnt': 1, 'role': {}, 'channel': {}}
                     await self.save_data()
 
-    # check if guild exit in data
+    # 检查服务器是否在机器人的数据库中注册
     async def check_guild(self, guild_id) -> None:
         async with self.action_lock:
             if guild_id not in self.data:
@@ -83,16 +89,33 @@ class GuildServiceImpl:
     async def get(self, guild_id) -> dict:
         return self.data[guild_id]
 
-    # 获取服务器角色信息
-    async def get_role(self, guild_id, role_name) -> Union[str, None]:
+    # 根据角色名获取 已注册在机器人数据库中的 服务器的角色信息
+    async def get_role_by_name(self, guild_id, role_name) -> Union[list, None]:
+        await self.read_data()
+        async with self.action_lock:
+            matching_ids = []
+            try:
+                d = self.data[guild_id]['role']
+                for role_id in d:
+                    if 'tag' in d[role_id] and d[role_id]['tag'] == role_name:
+                        matching_ids.append(role_id)
+                # return self.data[guild_id]['role'][role_name]
+            except KeyError:
+                return None
+            if len(matching_ids) == 0:
+                raise KeyError("Role Not Found")
+            return matching_ids
+
+    async def get_tag_by_role_id(self, guild_id, role_id: int) -> str:
         await self.read_data()
         async with self.action_lock:
             try:
-                return self.data[guild_id]['role'][role_name]
+                if role_id in self.data[guild_id]['role']:
+                    return str(self.data[guild_id]['role'][role_id]['tag'])
             except KeyError:
-                return None
+                return "Undefined"
 
-    # get a dict of all roles in a guild
+    # 获取一个服务器中全部已注册在机器人数据库中的角色id
     async def get_roles(self, guild_id) -> Union[dict, None]:
         await self.read_data()
         async with self.action_lock:
@@ -108,14 +131,61 @@ class GuildServiceImpl:
             if 'role' not in self.data[guild_id]:
                 self.data[guild_id]['role'] = {}
 
-            # fit old version
-            if 'tag' not in self.data[guild_id]['role'][role_tag] and self.data[guild_id]['role'][role_tag] is not None:
-                self.data[guild_id]['role'][role_id] = {'tag': self.data[guild_id]['role'][role_tag], 'permission': []}
+            # 为旧版本升级做的适配
+            # 如果role里面只有一个str的tag就要重写成新格式
+            try:
+                if 'tag' not in self.data[guild_id]['role'][role_tag] and self.data[guild_id]['role'][
+                    role_tag] is not None:
+                    self.data[guild_id]['role'][role_id] = {'tag': self.data[guild_id]['role'][role_tag],
+                                                            'permission': []}
+            except KeyError as e:
+                logging.debug(LOG_HEADER + 'No role id found, maybe its new role. Continue process...')
+                pass
 
-            # init role info
-            self.data[guild_id]['role'][role_id]['tag'] = role_tag
-            self.data[guild_id]['role'][role_id]['permission'] = []
+            # 注册新角色数据
+            self.data[guild_id]['role'][role_id] = {'tag': role_tag, 'permission': []}
             await self.save_data()
+
+    # 设置服务器同时最多有多少服务单
+    async def set_max_ticket(self, guild_id, maxium_ticket: int) -> bool:
+        await self.check_guild(guild_id)
+        async with self.action_lock:
+            try:
+                self.data[guild_id]['max'] = maxium_ticket
+                return True
+            except KeyError as e:
+                logging.warning('Trying assign max ticket limit to an empty guild.')
+                logging.warning(f'[Args] guild_id: {guild_id}, maxium_ticket: {maxium_ticket}')
+                return False
+
+    # 从某个服务器申请服务单
+    async def apply(self, guild_id, user_id) -> Union[int, None]:
+        async with self.action_lock:
+            userGuildCnt = await user_service.get_guild_cnt(user_id, guild_id)
+
+            # 检查是否达到单人开票数量最大张数，如果达到了就不开。
+            # 如果未设置最大开票张数，默认为2
+            if 'max' not in self.data[guild_id]:
+                self.data[guild_id]['max'] = 2
+
+            # 如果超出单人开票张数限制
+            if self.data[guild_id]['max'] <= userGuildCnt:
+                return None
+
+            await user_service.open(user_id, guild_id)
+            self.data[guild_id]['cnt'] += 1
+            with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
+                json.dump(self.data, f, ensure_ascii=False, indent=4)
+            return self.data[guild_id]['cnt']
+
+    # 释放某个服务器的服务单
+    async def close(self, guild_id, user_id):
+        async with self.action_lock:
+            await user_service.close(user_id, guild_id)
+
+    # #####################################################################################
+    # 下面是为了动态更新服务单数据新增的功能，暂时没用
+    # #####################################################################################
 
     # 获取服务器频道信息
     async def get_channel(self, guild_id, channel_tag) -> Union[str, None]:
@@ -135,55 +205,26 @@ class GuildServiceImpl:
             self.data[guild_id]['channel'][channel_tag] = channel_id
             await self.save_data()
 
-    async def set_max_ticket(self, guild_id, maxium_ticket: int) -> bool:
-        await self.check_guild(guild_id)
-        async with self.action_lock:
-            self.data[guild_id]['max'] = maxium_ticket
-            return True
-
-    # 申请服务器Ticket
-    async def apply(self, guild_id, user_id) -> Union[int, None]:
-        async with self.action_lock:
-            userGuildCnt = await user_service.get_guild_cnt(user_id, guild_id)
-
-            # check if max have been set, if not, set to DEFAULT value.
-            if 'max' not in self.data[guild_id]:
-                self.data[guild_id]['max'] = 2
-
-            # check if over maxium limit
-            if self.data[guild_id]['max'] <= userGuildCnt:
-                return None
-
-            await user_service.open(user_id, guild_id)
-            self.data[guild_id]['cnt'] += 1
-            with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=4)
-            return self.data[guild_id]['cnt']
-
-    # 释放服务器Ticket
-    async def close(self, guild_id, user_id):
-        async with self.action_lock:
-            await user_service.close(user_id, guild_id)
-
-    # # 检查指定服务器是否有效
-    # async def record_if_not_exist(self, guild_id):
-    #     async with self.action_lock:
-    #         if guild_id not in self.data:
-    #             await self.init_guild(guild_id)
-    #         return
-
-    # async def get_staff(self, guild_id) -> Union[int, None]:
-    #     return await self.get_role(guild_id, 'staff')
-    #
-    # async def get_mute(self, guild_id) -> Union[str, None]:
-    #     return await self.get_role(guild_id, 'mute')
-    #
-    # async def set_staff(self, guild_id, role_id):
-    #     await self.set_role(guild_id, 'role', role_id)
-
 
 # py是天生的单例模式
 guild_service = GuildServiceImpl()
+
+# # 检查指定服务器是否有效
+# async def record_if_not_exist(self, guild_id):
+#     async with self.action_lock:
+#         if guild_id not in self.data:
+#             await self.init_guild(guild_id)
+#         return
+
+# async def get_staff(self, guild_id) -> Union[int, None]:
+#     return await self.get_role(guild_id, 'staff')
+#
+# async def get_mute(self, guild_id) -> Union[str, None]:
+#     return await self.get_role(guild_id, 'mute')
+#
+# async def set_staff(self, guild_id, role_id):
+#     await self.set_role(guild_id, 'role', role_id)
+
 
 # # 单例模式， 保证只有一个id_dict实例
 # class GuildService:

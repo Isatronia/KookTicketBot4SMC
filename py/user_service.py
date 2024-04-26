@@ -9,6 +9,16 @@
 2022/7/11 15:55   ishgrina   1.0         None
 '''
 
+'''
+文件数据结构 - 已重构
+user.json:
+{
+    ${guild_id}:{
+        ${user_id}: {cnt: 0}
+    }
+}
+'''
+
 # import libs
 import json
 from typing import Union
@@ -43,64 +53,67 @@ class UserServiceImpl:
 
     async def get_guild_cnt(self, user_id, guild_id) -> Union[int, None]:
         async with self.lock:
+            if guild_id not in self.data:
+                self.data[guild_id] = {user_id: {'cnt': 0}}
+                return 0
             try:
-                user = self.data[user_id]
-                try:
-                    return self.data[user_id][guild_id]
-                except KeyError:
-                    self.data[user_id][guild_id] = 0
-                    return 0
+                return self.data[guild_id][user_id]['cnt']
             except KeyError:
-                self.data[user_id] = {guild_id: 0}
+                self.data[guild_id][user_id] = 0
                 return 0
 
     async def set_guild_cnt(self, user_id, guild_id, cnt) -> None:
         async with self.lock:
-            try:
-                user = self.data[user_id]
-                try:
-                    self.data[user_id][guild_id] = cnt
-                except KeyError:
-                    self.data[user_id][guild_id] = cnt
-            except KeyError:
-                self.data[user_id] = {guild_id: cnt}
+            if guild_id not in self.data:
+                self.data[guild_id] = {user_id: {'cnt': cnt}}
+            elif user_id not in self.data[guild_id]:
+                self.data[guild_id][user_id] = {'cnt': cnt}
+            else:
+                self.data[guild_id][user_id] = {'cnt': cnt}
             with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
+    # 开票
     async def open(self, user_id, guild_id):
         async with self.lock:
             try:
-                if user_id not in self.data:
-                    self.data[user_id] = {guild_id: 1}
+                if guild_id not in self.data:
+                    self.data[guild_id] = {user_id: {'cnt': 1}}
+                elif user_id not in self.data[guild_id]:
+                    self.data[guild_id][user_id] = {'cnt': 1}
                 else:
-                    self.data[user_id][guild_id] += 1
+                    self.data[guild_id][user_id]['cnt'] += 1
             except KeyError:
-                self.data[user_id] = {guild_id: 1}
+                self.data[guild_id] = {user_id: {'cnt': 1}}
             with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     async def close(self, user_id, guild_id):
         async with self.lock:
             try:
-                if user_id not in self.data:
-                    self.data[user_id] = {guild_id: 0}
-                try:
-                    if self.data[user_id][guild_id] > 0:
-                        self.data[user_id][guild_id] -= 1
-                except KeyError:
-                    self.data[user_id] = {guild_id: 0}
+                if guild_id not in self.data:
+                    self.data[guild_id] = {user_id: {'cnt': 0}}
+                elif user_id not in self.data[guild_id]:
+                    self.data[guild_id][user_id] = {'cnt': 0}
+                else:
+                    if self.data[guild_id][user_id]['cnt'] > 0:
+                        self.data[guild_id][user_id]['cnt'] -= 1
+                    else:
+                        self.data[guild_id][user_id]['cnt'] = 0
             except KeyError:
-                self.data[user_id] = {guild_id: 0}
+                self.data[guild_id] = {user_id: {'cnt': 0}}
             with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     # 重置某个用户在特定guild的所有数据
     async def reset(self, user_id, guild_id):
         async with self.lock:
-            if user_id in self.data:
-                self.data[user_id][guild_id] = 0
+            if guild_id not in self.data:
+                self.data[guild_id] = {user_id: {'cnt': 0}}
+            elif user_id not in self.data[guild_id]:
+                self.data[guild_id][user_id] = {'cnt': 0}
             else:
-                self.data[user_id] = {guild_id: 0}
+                self.data[guild_id][user_id]['cnt'] = 0
             with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 

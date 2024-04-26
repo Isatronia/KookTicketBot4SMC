@@ -16,15 +16,20 @@ from khl.guild import ChannelCategory
 
 from .value import PATH
 
+
 async def gen_basic_manual(user: User):
     cm = CardMessage()
     cd = Card()
     cd.append(Module.Header('帮助手册'))
 
+    cont = ""
     with open(PATH.MAN_DATA, 'r', encoding='utf-8') as f:
         for line in f:
-            cd.append(Module.Section(Element.Text(content=line, type=Types.Text.KMD)))
+            if line == '':
+                continue
+            cont = cont + "\n" + line
 
+    cd.append(Module.Section(Element.Text(content=cont, type=Types.Text.KMD)))
     cm.append(cd)
     return cm
 
