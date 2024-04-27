@@ -133,7 +133,7 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
     # 开始构建卡片信息
     card = Card(Module.Section(
         Element.Text(
-            f"点击按钮申请一张{role_name}能看到的Ticket!\n",
+            f"点击按钮申请一张{role_name}\n",
         ),
     ))
 
@@ -238,7 +238,8 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
             config = json.load(f)
         await cnl.send(
             '(met)' + sender + '(met) 你的ticket已经建好啦！\n请直接在这里提出你的问题，我们的员工看到后会给您解答。',
-            type=MessageTypes.KMD)
+            type=MessageTypes.KMD, temp_target_id=str(sender))
+        await cnl.send("(met)here(met)", type=MessageTypes.KMD)
 
         # 没看明白先注释掉，应该是@对应用户组，现在是群发，先不加了
         # await cnl.send('(rol)' + str(target_role_id) + '(rol)', type=MessageTypes.KMD)
