@@ -125,7 +125,7 @@ class GuildServiceImpl:
                 return None
 
     # 设置服务器角色信息
-    async def set_role(self, guild_id, role_tag, role_id):
+    async def try_set_role_tag(self, guild_id, role_tag, role_id) -> Union[bool, None]:
         await self.check_guild(guild_id)
         async with self.action_lock:
             if 'role' not in self.data[guild_id]:
@@ -133,11 +133,14 @@ class GuildServiceImpl:
             # 注册新角色数据
             if role_id not in self.data[guild_id]['role']:
                 self.data[guild_id]['role'][role_id] = {'tag': [role_tag], 'permission': []}
-            else:
+            elif role_tag not in self.data[guild_id]['role'][role_id]['tag']:
                 self.data[guild_id]['role'][role_id]['tag'].append(role_tag)
-            await self.save_data()
+                await self.save_data()
+                return True
+            else:
+                return None
 
-    async def try_remove_role(self, guild_id, role_tag, role_id) -> Union[bool, None]:
+    async def try_remove_role_tag(self, guild_id, role_tag, role_id) -> Union[bool, None]:
         await self.check_guild(guild_id)
         async with self.action_lock:
             if 'role' not in self.data[guild_id]:

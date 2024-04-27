@@ -82,7 +82,7 @@ async def set_role(b: Bot, event: Event, tag: str, role: str):
     roles = await g.fetch_roles()
     for r in roles:
         if r.id == int(role):
-            await guild_service.set_role(event.body['guild_id'], tag, role)
+            await guild_service.try_set_role_tag(event.body['guild_id'], tag, role)
             await cnl.send("已成功设置 " + r.name + ' 为 ' + tag + " 角色")
             return
     await cnl.send("没有找到 " + role + " 角色, 请尝试重新拉取角色列表")
@@ -97,7 +97,7 @@ async def remove_role(b: Bot, event: Event, tag: str, role: str):
     roles = await g.fetch_roles()
     for r in roles:
         if r.id == int(role):
-            action_res = await guild_service.try_remove_role(event.body['guild_id'], tag, role)
+            action_res = await guild_service.try_remove_role_tag(event.body['guild_id'], tag, role)
             if action_res is not None:
                 # 编码卡片消息
                 cm = CardMessage(Card(Module.Section(Element.Text(f"已成功移除 {r.name} 的 {tag} 角色"))))
