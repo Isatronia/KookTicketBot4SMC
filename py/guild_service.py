@@ -17,7 +17,6 @@ import logging
 
 from .user_service import user_service
 from .value import PATH
-from .utils import log
 
 '''
 data.json - GUILD DATA
@@ -71,14 +70,15 @@ class GuildServiceImpl:
     # 初始化服务器信息
     # 新增服务器时初始化数据
     async def init_guild(self, guild_id):
-        await  self.read_data()
+        await self.read_data()
         if guild_id not in self.data:
             async with self.init_lock:
                 if guild_id not in self.data:
                     self.data[guild_id] = {'cnt': 1, 'role': {}, 'channel': {}}
                     await self.save_data()
 
-    # 检查服务器是否在机器人的数据库中注册
+    # 检查服务器是否在机器人的数据库中注册,如果没有就注册。
+    # 用于确保访问时能够获取服务器
     async def check_guild(self, guild_id) -> None:
         async with self.action_lock:
             if guild_id not in self.data:
@@ -131,16 +131,16 @@ class GuildServiceImpl:
             if 'role' not in self.data[guild_id]:
                 self.data[guild_id]['role'] = {}
 
-            # 为旧版本升级做的适配
+            # 为旧版本升级做的适配, 代码将在几个版本后删除
             # 如果role里面只有一个str的tag就要重写成新格式
-            try:
-                if 'tag' not in self.data[guild_id]['role'][role_tag] and self.data[guild_id]['role'][
-                    role_tag] is not None:
-                    self.data[guild_id]['role'][role_id] = {'tag': self.data[guild_id]['role'][role_tag],
-                                                            'permission': []}
-            except KeyError as e:
-                logging.debug(LOG_HEADER + 'No role id found, maybe its new role. Continue process...')
-                pass
+            # try:
+            #     if 'tag' not in self.data[guild_id]['role'][role_tag] and self.data[guild_id]['role'][
+            #         role_tag] is not None:
+            #         self.data[guild_id]['role'][role_id] = {'tag': self.data[guild_id]['role'][role_tag],
+            #                                                 'permission': []}
+            # except KeyError as e:
+            #     logging.debug(LOG_HEADER + 'No role id found, maybe its new role. Continue process...')
+            #     pass
 
             # 注册新角色数据
             self.data[guild_id]['role'][role_id] = {'tag': role_tag, 'permission': []}
@@ -161,7 +161,7 @@ class GuildServiceImpl:
     # 从某个服务器申请服务单
     async def apply(self, guild_id, user_id) -> Union[int, None]:
         async with self.action_lock:
-            userGuildCnt = await user_service.get_guild_cnt(user_id, guild_id)
+            user_guild_cnt = await user_service.get_guild_cnt(user_id, guild_id)
 
             # 检查是否达到单人开票数量最大张数，如果达到了就不开。
             # 如果未设置最大开票张数，默认为2
@@ -169,7 +169,7 @@ class GuildServiceImpl:
                 self.data[guild_id]['max'] = 2
 
             # 如果超出单人开票张数限制
-            if self.data[guild_id]['max'] <= userGuildCnt:
+            if self.data[guild_id]['max'] <= user_guild_cnt:
                 return None
 
             await user_service.open(user_id, guild_id)

@@ -8,6 +8,7 @@
 ------------      -------    --------    -----------
 2022/7/11 15:55   ishgrina   1.0         None
 '''
+import logging
 
 '''
 文件数据结构 - 已重构
@@ -38,6 +39,7 @@ class UserServiceImpl:
         except FileNotFoundError:
             self.data = {}
 
+
     async def get(self, key) -> Union[dict, None]:
         async with self.lock:
             try:
@@ -56,11 +58,10 @@ class UserServiceImpl:
             if guild_id not in self.data:
                 self.data[guild_id] = {user_id: {'cnt': 0}}
                 return 0
-            try:
-                return self.data[guild_id][user_id]['cnt']
-            except KeyError:
-                self.data[guild_id][user_id] = 0
+            if user_id not in self.data[guild_id]:
+                self.data[guild_id][user_id] = {'cnt': 0}
                 return 0
+            return self.data[guild_id][user_id]['cnt']
 
     async def set_guild_cnt(self, user_id, guild_id, cnt) -> None:
         async with self.lock:
@@ -75,6 +76,11 @@ class UserServiceImpl:
 
     # 开票
     async def open(self, user_id, guild_id):
+        try:
+            int(user_id)
+        except TypeError:
+            logging.error("User Id must be number.")
+            return
         async with self.lock:
             try:
                 if guild_id not in self.data:

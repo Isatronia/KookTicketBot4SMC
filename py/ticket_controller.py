@@ -145,7 +145,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
     # 生成Ticket
     async def gen_ticket(guild: Guild, cate: ChannelCategory):
 
-        sender = await guild.fetch_user(event.body['user_id'])
+        sender = int(event.body['user_id'])
         # 查询当前用户已经创建的Ticket数量
         ticket_cnt = await guild_service.apply(guild.id, event.body['user_id'])
         logging.info(f"[{guild.name}]" + ' ticket count: ' + str(ticket_cnt))
@@ -180,10 +180,11 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
             # 全体成员的权限，禁止看到和说话
             if role.id == 0:
                 await cnl.update_role_permission(role, deny=(2048 | 4096))
-            # 目标角色的权限，允许其看到这张ticket
-            # TODO: 技术欠债，到时候改for循环加权限
-            elif role.id in ticket_role:
-                await cnl.update_role_permission(role, allow=(2048 | 4096))
+                break
+
+        # 目标角色的权限，允许其看到这张ticket
+        for role in ticket_role:
+            await cnl.update_role_permission(role, allow=(2048 | 4096))
 
         # 该用户的权限设置
         await cnl.update_user_permission(sender, allow=(2048 | 4096))
@@ -195,14 +196,14 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
             Module.Section('Ticket 已经成功创建，请在本频道内发送您的问题，我们会尽快给您回复。'),
             Module.Section('要关闭Ticket, 请点击下方按钮：'),
             Module.ActionGroup(
-                Element.Button('关闭Ticket', 'preCloseTicket_' + str(cnl.id) + '_' + str(sender.id),
+                Element.Button('关闭Ticket', 'preCloseTicket_' + str(cnl.id) + '_' + str(sender),
                                Types.Click.RETURN_VAL)
             )
         )))
         with open('cfg/config.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         await cnl.send(
-            '(met)' + sender.id + '(met) 你的ticket已经建好啦！\n请直接在这里提出你的问题，我们的员工看到后会给您解答。',
+            '(met)' + sender + '(met) 你的ticket已经建好啦！\n请直接在这里提出你的问题，我们的员工看到后会给您解答。',
             type=MessageTypes.KMD)
 
         # 没看明白先注释掉，应该是@对应用户组，现在是群发，先不加了
@@ -244,7 +245,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
     return
 
 
-# 关闭确认
+# 关闭确认（预关闭）
 async def pre_close_ticket(b: Bot, event: Event, channel: str, user: str):
     logging.info('pre close ticket...')
     cnl = await b.client.fetch_public_channel(channel)

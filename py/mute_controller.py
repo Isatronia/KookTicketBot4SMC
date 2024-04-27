@@ -22,13 +22,13 @@ from .value import ROLE
 async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
     # 为用户设置禁言角色并且私聊发送原因
     # 获取禁言角色
-    muted_role = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
+    muted_roles = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
 
     # 设置禁言时间
     mute_time = time.time() + mute_time
 
     # 为用户设置禁言角色
-    await msg.ctx.guild.grant_role(user, muted_role)
+    await msg.ctx.guild.grant_role(user, muted_roles[0])
     await user.send('你因为 ' + reason + ' 已被禁言， 请私聊管理解禁。')
     await mute_service.mute(msg.ctx.guild.id, user.id, mute_time)
 
@@ -36,10 +36,10 @@ async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
 async def unmute_user(msg: Message, user: User):
     # 为用户设置禁言角色并且私聊发送原因
     # 获取禁言角色
-    muted_role = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
+    muted_roles = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
 
     # 为用户设置禁言角色
-    await msg.ctx.guild.revoke_role(user, muted_role)
+    await msg.ctx.guild.revoke_role(user, muted_roles[0])
     await user.send('你已被解除禁言。')
     await mute_service.unmute(msg.ctx.guild.id, user.id)
 
