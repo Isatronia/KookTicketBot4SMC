@@ -38,10 +38,12 @@ async def gen_basic_manual(user: User):
     cm = CardMessage()
     cd = Card()
     cd.append(Module.Header('帮助手册'))
+    cont = ""
     # 从特定文件读取
     with open(PATH.MAN_DATA, 'r', encoding='utf-8') as f:
         for line in f:
-            cd.append(Module.Section(Element.Text(content=line, type=Types.Text.KMD)))
+            cont = cont + line
+    cd.append(Module.Section(Element.Text(content=cont, type=Types.Text.KMD)))
     cm.append(cd)
     return cm
 
@@ -56,11 +58,14 @@ async def manual(msg: Message, txt: str):
                 cm = CardMessage()
                 cd = Card()
                 cd.append(Module.Header('帮助手册'))
+                cont = ""
                 for line in f:
-                    cd.append(Module.Section(Element.Text(content=line, type=Types.Text.KMD)))
+                    cont = cont + line
+                cd.append(Module.Section(Element.Text(content=cont, type=Types.Text.KMD)))
                 cm.append(cd)
                 await msg.ctx.channel.send(cm)
         except FileNotFoundError as e:
+            await msg.reply("文件不存在，请检查拼写或联系管理员。", )
             return
     return
 
