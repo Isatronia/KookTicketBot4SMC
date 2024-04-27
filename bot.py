@@ -8,19 +8,22 @@
 ------------      -------    --------    -----------
 2022/7/8 11:32   ishgrina   1.0         None
 '''
+import json
 import logging
 # import lib
 import random
 
 from khl import *
-from khl.card import Struct
-# from khl import EventTypes
+from khl.card import CardMessage, Card, Module, Element, Types, Struct
+from khl.guild import ChannelCategory
 
-from py.ticket_controller import *
-from py.mute_controller import *
+import py.ticket_controller as ticket_controller
+from py.guild_service import guild_service
+from py.mute_controller import mute_user, unmute_user, check_all
+from py.user_service import user_service
 from py.utils import check_authority, getUserGuildAuthority, CheckAuth
 from py.value import AUTH, ROLE
-from py.parser import *
+from py.parser import timeParser, get_time
 from py.manual_controller import manual
 
 # Global
@@ -41,14 +44,16 @@ bot = Bot(token=config['token'])
 async def setupTicketBot(msg: Message, role: str = 'staff'):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
-    await setup_ticket_generator(bot, msg, role)
+    await ticket_controller.setup_ticket_generator(bot, msg, role)
 
 
 # 设置服务器角色
-@bot.command(name='setrole')
-async def selectRole(msg: Message, rolename: str):
+@bot.command(name='setrole', aliases=['sr', 'settag'])
+async def set_role(msg: Message, rolename: str, role_id: int = None):
     if not await check_authority(msg, AUTH.ADMIN):
         return
+    if role_id is not None:
+        pass
     logging.info('setting role: ' + rolename + 'at guild ' + msg.ctx.guild.name + ' guild id is: ' + msg.ctx.guild.id)
     roles = await msg.ctx.guild.fetch_roles()
     cm = CardMessage()
@@ -56,6 +61,23 @@ async def selectRole(msg: Message, rolename: str):
     for role in roles:
         cd.append(Module.ActionGroup(
             Element.Button(role.name, 'setRole_' + rolename + '_' + str(role.id), Types.Click.RETURN_VAL)
+        ))
+    cm.append(cd)
+    await msg.ctx.channel.send(cm)
+    return
+
+
+@bot.command(name='delrole', aliases=['dr', 'deletetag'])
+async def del_role(msg: Message, rolename: str):
+    if not await check_authority(msg, AUTH.ADMIN):
+        return
+    logging.info(f"deleting role: {rolename} at guild {msg.ctx.guild.name} witch id is: {msg.ctx.guild.id}")
+    roles = await msg.ctx.guild.fetch_roles()
+    cm = CardMessage()
+    cd = Card(Module.Header(f'选择角色删除它们的"{rolename}"tag'))
+    for role in roles:
+        cd.append(Module.ActionGroup(
+            Element.Button(role.name, 'delRole_' + rolename + '_' + str(role.id), Types.Click.RETURN_VAL)
         ))
     cm.append(cd)
     await msg.ctx.channel.send(cm)
@@ -80,8 +102,8 @@ async def listrole(msg: Message):
         Module.Section(
             Struct.Paragraph(
                 2,
-                Element.Text("TAG", type=Types.Text.KMD),
-                Element.Text("ID", type=Types.Text.KMD)
+                Element.Text("ID", type=Types.Text.KMD),
+                Element.Text("TAG", type=Types.Text.KMD)
             )
         )
     )
@@ -92,8 +114,8 @@ async def listrole(msg: Message):
             Module.Section(
                 Struct.Paragraph(
                     2,
-                    Element.Text(f"{roles[k]['tag']}", type=Types.Text.KMD),
-                    Element.Text(f"{k}", type=Types.Text.KMD)
+                    Element.Text(f"{k}", type=Types.Text.KMD),
+                    Element.Text(f"{roles[k]['tag']}", type=Types.Text.KMD)
                 )
             )
         )
@@ -235,27 +257,22 @@ async def btnclk(b: Bot, event: Event):
     if event.body['value'].startswith('create_ticket_'):
         # check if role exists
         args = event.body['value'].split('_')
-        # roles = await guild_service.get_roles(event.body['guild_id'])
-        # 最后一个参数代表对应的角色
-        # if int(args[2:-1]) not in roles:
-        #     cnl = await b.client.fetch_public_channel(event.target_id)
-        #     await cnl.send('角色未设置，请检查您的设定')
-        #     return
-        await create_ticket(b, event, args[2:])
+        # 后续参数代表对应角色
+        await ticket_controller.create_ticket(b, event, args[2:])
         return
 
     # 关闭Ticket时对第一次按钮点击做询问,此时称作预关闭
     # preCloseTicket_{channelId}_{userId}
     elif event.body['value'].startswith('preCloseTicket_'):
         args = event.body['value'].split('_')
-        await pre_close_ticket(b, event, args[1], args[2])
+        await ticket_controller.pre_close_ticket(b, event, args[1], args[2])
         return
 
     # 处理关闭ticket的事件, 关闭的信息开头为closeTicket_
     # closeTicket_{channelId}_{userId}
     elif event.body['value'].startswith('closeTicket_'):
         args = event.body['value'].split('_')
-        await close_ticket(b, event, args[1], args[2])
+        await ticket_controller.close_ticket(b, event, args[1], args[2])
         return
 
     # 查询消息发送的服务器
@@ -276,7 +293,7 @@ async def btnclk(b: Bot, event: Event):
         cnl = await b.client.fetch_public_channel(event.body['target_id'])
         await cnl.send('Ticket已经删除，可能需要一段时间同步到您的设备。请不要重复删除')
         args = event.body['value'].split('_')
-        await delete_ticket(b, event, args[1])
+        await ticket_controller.delete_ticket(b, event, args[1])
 
     # 重开Ticket
     elif event.body['value'].startswith('reopenTicket_'):
@@ -284,7 +301,7 @@ async def btnclk(b: Bot, event: Event):
         if not await check_auth(user_authority, AUTH.STAFF):
             return
         args = event.body['value'].split('_')
-        await reopen_ticket(b, event, args[1], args[2])
+        await ticket_controller.reopen_ticket(b, event, args[1], args[2])
 
     # 设置角色
     # setRole_{roleName}_{roleId}
@@ -292,7 +309,15 @@ async def btnclk(b: Bot, event: Event):
         if not await check_auth(user_authority, AUTH.ADMIN):
             return
         args = event.body['value'].split('_')
-        await set_role(b, event, args[1], args[2])
+        await ticket_controller.set_role(b, event, args[1], args[2])
+
+    # 设置角色
+    # removeRole_{roleName}_{roleId}
+    if event.body['value'].startswith('delRole_'):
+        if not await check_auth(user_authority, AUTH.ADMIN):
+            return
+        args = event.body['value'].split('_')
+        await ticket_controller.remove_role(b, event, args[1], args[2])
     return
 
 
@@ -308,17 +333,8 @@ async def check():
 # 测试指令
 # #########################################################################################
 @bot.command(name='hello')
-async def world(msg: Message, *args):
-    if not await check_authority(msg, 0):
-        return
-    await msg.reply(' '.join(args))
-
-
-@bot.command(name='authtest')
-# @CheckAuth(auth=AUTH.STAFF)
-async def test(msg: Message, *args):
-    await msg.reply('tested')
-    return
+async def world(msg: Message):
+    await msg.reply("world")
 
 
 # #########################################################################################

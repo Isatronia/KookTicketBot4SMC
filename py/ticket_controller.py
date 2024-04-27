@@ -15,6 +15,7 @@ import logging
 
 # import bot
 import khl.requester
+import khl.api
 from khl import Bot, Message, MessageTypes, User, Guild, Event, ChannelTypes
 from khl.card import CardMessage, Card, Module, Element, Types
 from khl.guild import ChannelCategory
@@ -83,6 +84,26 @@ async def set_role(b: Bot, event: Event, tag: str, role: str):
         if r.id == int(role):
             await guild_service.set_role(event.body['guild_id'], tag, role)
             await cnl.send("已成功设置 " + r.name + ' 为 ' + tag + " 角色")
+            return
+    await cnl.send("没有找到 " + role + " 角色, 请尝试重新拉取角色列表")
+
+
+async def remove_role(b: Bot, event: Event, tag: str, role: str):
+    logging.info('removing role tag...')
+
+    # 获取频道id和服务器id
+    cnl = await b.client.fetch_public_channel(event.body['target_id'])
+    g = await b.client.fetch_guild(event.body['guild_id'])
+    roles = await g.fetch_roles()
+    for r in roles:
+        if r.id == int(role):
+            action_res = await guild_service.try_remove_role(event.body['guild_id'], tag, role)
+            if action_res is not None:
+                # 编码卡片消息
+                cm = CardMessage(Card(Module.Section(Element.Text(f"已成功移除 {r.name} 的 {tag} 角色"))))
+                await cnl.send(cm)
+            else:
+                await cnl.send(f"操作完成,{r.name}未拥有此tag。", temp_target_id=event.body['user_id'])
             return
     await cnl.send("没有找到 " + role + " 角色, 请尝试重新拉取角色列表")
 

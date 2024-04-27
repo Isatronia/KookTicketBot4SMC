@@ -97,7 +97,7 @@ class GuildServiceImpl:
             try:
                 d = self.data[guild_id]['role']
                 for role_id in d:
-                    if 'tag' in d[role_id] and d[role_id]['tag'] == role_name:
+                    if 'tag' in d[role_id] and role_name in d[role_id]['tag']:
                         matching_ids.append(role_id)
                 # return self.data[guild_id]['role'][role_name]
             except KeyError:
@@ -106,14 +106,14 @@ class GuildServiceImpl:
                 raise KeyError("Role Not Found")
             return matching_ids
 
-    async def get_tag_by_role_id(self, guild_id, role_id: int) -> str:
+    async def get_tag_by_role_id(self, guild_id, role_id: int) -> Union[None, list]:
         await self.read_data()
         async with self.action_lock:
             try:
                 if role_id in self.data[guild_id]['role']:
-                    return str(self.data[guild_id]['role'][role_id]['tag'])
+                    return self.data[guild_id]['role'][role_id]['tag']
             except KeyError:
-                return "Undefined"
+                return None
 
     # 获取一个服务器中全部已注册在机器人数据库中的角色id
     async def get_roles(self, guild_id) -> Union[dict, None]:
@@ -130,22 +130,27 @@ class GuildServiceImpl:
         async with self.action_lock:
             if 'role' not in self.data[guild_id]:
                 self.data[guild_id]['role'] = {}
-
-            # 为旧版本升级做的适配, 代码将在几个版本后删除
-            # 如果role里面只有一个str的tag就要重写成新格式
-            # try:
-            #     if 'tag' not in self.data[guild_id]['role'][role_tag] and self.data[guild_id]['role'][
-            #         role_tag] is not None:
-            #         self.data[guild_id]['role'][role_id] = {'tag': self.data[guild_id]['role'][role_tag],
-            #                                                 'permission': []}
-            # except KeyError as e:
-            #     logging.debug(LOG_HEADER + 'No role id found, maybe its new role. Continue process...')
-            #     pass
-
             # 注册新角色数据
-            self.data[guild_id]['role'][role_id] = {'tag': role_tag, 'permission': []}
+            if role_id not in self.data[guild_id]['role']:
+                self.data[guild_id]['role'][role_id] = {'tag': [role_tag], 'permission': []}
+            else:
+                self.data[guild_id]['role'][role_id]['tag'].append(role_tag)
             await self.save_data()
 
+    async def try_remove_role(self, guild_id, role_tag, role_id) -> Union[bool, None]:
+        await self.check_guild(guild_id)
+        async with self.action_lock:
+            if 'role' not in self.data[guild_id]:
+                return None
+            if role_id not in self.data[guild_id]['role']:
+                return None
+            if isinstance(self.data[guild_id]['role'][role_id]['tag'], list) and role_tag in \
+                    self.data[guild_id]['role'][role_id]['tag']:
+                self.data[guild_id]['role'][role_id]['tag'].remove(role_tag)
+                await self.save_data()
+                return True
+            else:
+                return None
     # 设置服务器同时最多有多少服务单
     async def set_max_ticket(self, guild_id, maxium_ticket: int) -> bool:
         await self.check_guild(guild_id)
