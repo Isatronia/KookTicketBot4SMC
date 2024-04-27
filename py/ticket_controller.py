@@ -101,7 +101,11 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
     role_id = "_".join(role_id)
 
     # 开始构建卡片信息
-    card = Card()
+    card = Card(Module.Section(
+        Element.Text(
+            f"点击按钮申请一张{role_name}能看到的Ticket!\n",
+        ),
+    ))
 
     temp_ag = Module.ActionGroup(
         Element.Button("点我开票",
