@@ -39,13 +39,13 @@ async def getUserGuildAuthority(user: Union[User, str], guild: Union[Guild, None
     # 2024-4-26 成了
     from .guild_service import guild_service
 
-    # 先拿到用户的int型id
+    # 先拿到用户的str型id
     user_id = user.id if isinstance(user, User) else user
     user_id = str(user_id)
 
     # 从配置文件抓取服务器员工id
     staff = await guild_service.get_role_by_name(guild.id, ROLE.STAFF)
-    staff = list(map(int, staff))
+    staff = None if staff is None else list(map(int, staff))
 
     # 开始鉴权,初始化参数
     user_authority = 0
