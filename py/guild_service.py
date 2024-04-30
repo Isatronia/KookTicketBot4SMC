@@ -103,7 +103,9 @@ class GuildServiceImpl:
             except KeyError:
                 return None
             if len(matching_ids) == 0:
-                raise KeyError("Role Not Found")
+                logging.warning(f"Finding role {role_name} in {guild_id} but not found. Return None.")
+                return None
+                # raise KeyError("Role Not Found")
             return matching_ids
 
     async def get_tag_by_role_id(self, guild_id, role_id: int) -> Union[None, list]:
