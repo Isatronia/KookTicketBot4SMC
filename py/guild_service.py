@@ -135,6 +135,7 @@ class GuildServiceImpl:
             # 注册新角色数据
             if role_id not in self.data[guild_id]['role']:
                 self.data[guild_id]['role'][role_id] = {'tag': [role_tag], 'permission': []}
+                return True
             elif role_tag not in self.data[guild_id]['role'][role_id]['tag']:
                 self.data[guild_id]['role'][role_id]['tag'].append(role_tag)
                 await self.save_data()
