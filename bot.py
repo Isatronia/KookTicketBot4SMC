@@ -209,7 +209,7 @@ async def man(msg: Message, cmd: str = ''):
 
 # clean user Record
 @bot.command(name='clean')
-async def clean_user(msg: Message, user_id: str):
+async def clean_user_data(msg: Message, user_id: str):
     if not check_authority(msg, AUTH.ADMIN):
         return
     logging.info('cleaning user data: {:} at {:}(id is: {:})'.format(user_id, msg.ctx.guild.name, msg.ctx.guild.id))
@@ -243,8 +243,9 @@ async def dice(msg: Message, mx: int):
 # 事件处理模块
 # #########################################################################################
 
+# 按钮消息处理
 @bot.on_event(EventTypes.MESSAGE_BTN_CLICK)
-async def btnclk(b: Bot, event: Event):
+async def onclick(b: Bot, event: Event):
     async def check_auth(user_auth, auth):
         if (auth & user_auth) != auth:
             channel = await b.client.fetch_public_channel(event.body['target_id'])

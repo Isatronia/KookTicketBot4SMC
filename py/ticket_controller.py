@@ -116,19 +116,8 @@ async def remove_role(b: Bot, event: Event, tag: str, role: str):
 # 生成新的服务单申请按钮
 # 数据格式为 create_ticket_{roleId}
 async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
-    # 实现方法 | 发送一个带有按钮的卡片消息，点击该按钮的时候就为机器人发送create_ticket_{roleId}消息
+    # 实现方法 | 发送一个带有按钮的卡片消息，点击该按钮的时候就为机器人发送create_ticket_{roleName}消息
     cnl = msg.ctx.channel
-
-    # 获取角色id
-    guild = msg.ctx.guild
-    try:
-        role_id = await guild_service.get_role_by_name(guild.id, role_name)
-    except KeyError as e:
-        logging.error("Trying assign a ticket type to an unknown role.")
-        return
-
-    # 构建角色列表
-    role_id = "_".join(role_id)
 
     # 开始构建卡片信息
     card = Card(Module.Section(
@@ -139,7 +128,7 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
 
     temp_ag = Module.ActionGroup(
         Element.Button("点我开票",
-                       value=f"create_ticket_" + role_id,
+                       value=f"create_ticket_{role_name}",
                        click=Types.Click.RETURN_VAL,
                        theme=Types.Theme.PRIMARY)
     )
@@ -160,21 +149,9 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
 # #############################################################################
 
 # 创建Ticekt
-async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Union[str, None]:
-    logging.info(get_time() + 'creating ticket for roles: ' + str(ticket_role))
-
-    # 获取对应服务器
-    guild = await b.client.fetch_guild(event.body['guild_id'])
-    # 数据预处理
-    if ticket_role is not None:
-        ticket_role = list(map(int, ticket_role))
-
-    # 自动更新对应服务器的数据
-    try:
-        await guild_service.check_guild(guild.id)
-        # target_role_id = await guild_service.get_role(guild.id, ticket_role)
-    except Exception as e:
-        logging.warning(e)
+async def create_ticket(b: Bot, event: Event, ticket_role=None) -> Union[str, None]:
+    if ticket_role is None:
+        ticket_role = list()
 
     # 生成Ticket
     async def gen_ticket(guild: Guild, cate: ChannelCategory):
@@ -237,7 +214,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
         with open('cfg/config.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
         await cnl.send(
-            '(met)' + sender + '(met) 你的ticket已经建好啦！\n请直接在这里提出你的问题，我们的员工看到后会给您解答。',
+            f'(met){sender}(met) 你的ticket已经建好啦！\n请直接在这里提出你的问题，我们的员工看到后会给您解答。',
             type=MessageTypes.KMD, temp_target_id=str(sender))
         await cnl.send("(met)here(met)", type=MessageTypes.KMD)
 
@@ -255,6 +232,27 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
             pass
         logging.info('ticket created.')
         return cnl.id
+        # End genTicket
+
+    logging.info(get_time() + 'creating ticket for roles: ' + str(ticket_role))
+
+    # 获取对应服务器
+    guild = await b.client.fetch_guild(event.body['guild_id'])
+
+    # 数据预处理,获取能看到ticket的角色id。
+    # 旧版消息中ticket_role是角色id数组，新版消息中是角色tag。
+    try:
+        if ticket_role is not None:
+            ticket_role = list(map(int, ticket_role))
+    except ValueError:
+        ticket_role = await guild_service.get_role_by_name(guild.id, ticket_role[0])
+
+    # 自动更新对应服务器的数据
+    try:
+        await guild_service.check_guild(guild.id)
+        # target_role_id = await guild_service.get_role(guild.id, ticket_role)
+    except Exception as e:
+        logging.warning(e)
 
     logging.info('TicketBot: creating ticket at guild ' + guild.name)
     # 取得全部分类，筛选出Ticket分类
@@ -268,15 +266,13 @@ async def create_ticket(b: Bot, event: Event, ticket_role: list = list()) -> Uni
                                type=MessageTypes.KMD,
                                temp_target_id=event.body['user_id'])
             return
+
     # 没有Ticket分类就不发了，并且报个临时错误
     # 获取发送频道
     cnl = await b.client.fetch_public_channel(event.body['target_id'])
     await cnl.send("Ticket创建失败，请查看是否存在ticket分类。 *Kook目前不允许机器人创建分类，请手动进行*",
                    type=MessageTypes.KMD,
                    temp_target_id=event.body['user_id'])
-    # await guild.create_channel(name='ticket', type=ChannelTypes.CATEGORY)
-    # await create_ticket(b, event)
-    # await gen_ticket(channal)
     return
 
 
