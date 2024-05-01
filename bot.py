@@ -210,7 +210,7 @@ async def man(msg: Message, cmd: str = ''):
 # clean user Record
 @bot.command(name='clean')
 async def clean_user_data(msg: Message, user_id: str):
-    if not check_authority(msg, AUTH.ADMIN):
+    if not await check_authority(msg, AUTH.ADMIN):
         return
     logging.info('cleaning user data: {:} at {:}(id is: {:})'.format(user_id, msg.ctx.guild.name, msg.ctx.guild.id))
     await user_service.reset(user_id, msg.ctx.guild.id)
