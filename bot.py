@@ -23,7 +23,7 @@ from py.mute_controller import mute_user, unmute_user, check_all
 from py.user_service import user_service
 from py.utils import check_authority, getUserGuildAuthority, CheckAuth
 from py.value import AUTH, ROLE
-from py.parser import timeParser, get_time
+from py.parser import timeParser, get_time, extract_ticket_prefix
 from py.manual_controller import manual
 
 # Global
@@ -225,7 +225,8 @@ async def rename(msg: Message, *args):
     name = ' '.join(args)
     logging.info('rename channel id {:} as {:}'.format(msg.ctx.channel.id, name))
     try:
-        await msg.ctx.channel.update(name=name)
+        prefix = extract_ticket_prefix(msg.ctx.channel.name)
+        await msg.ctx.channel.update(name=f"{prefix} {name}")
         await msg.reply('重命名成功=w=。', is_temp=True)
     except Exception as e:
         await msg.reply(str(e), is_temp=True)

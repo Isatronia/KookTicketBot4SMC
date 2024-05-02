@@ -149,9 +149,12 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
 # #############################################################################
 
 # 创建Ticekt
-async def create_ticket(b: Bot, event: Event, ticket_role=None) -> Union[str, None]:
+async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None]=None) -> Union[str, None]:
     if ticket_role is None:
         ticket_role = list()
+
+    # 如果传进来的是字符串类型的新消息，把它存起来，创建ticket的时候发送提示消息。
+    raw_ticket_role = ticket_role[0] if len(ticket_role) == 1 and isinstance(ticket_role[0], str) else None
 
     # 生成Ticket
     async def gen_ticket(guild: Guild, cate: ChannelCategory):
@@ -159,7 +162,8 @@ async def create_ticket(b: Bot, event: Event, ticket_role=None) -> Union[str, No
         sender = int(event.body['user_id'])
         # 查询当前用户已经创建的Ticket数量
         ticket_cnt = await guild_service.apply(guild.id, event.body['user_id'])
-        logging.info(f"[{guild.name}]" + ' ticket count: ' + str(ticket_cnt))
+
+        logging.info(f"User {sender} is applying ticket at [{guild.name}] | ticket count:" + str(ticket_cnt))
 
         # 如果开太多票会被禁止开票
         if ticket_cnt is None:
@@ -172,7 +176,11 @@ async def create_ticket(b: Bot, event: Event, ticket_role=None) -> Union[str, No
 
         # 创建一个新频道, 要用try来防止到达上限造成的bug
         try:
-            cnl = await cate.create_text_channel(f"ticket {str(ticket_cnt)}")
+            channal_name = f"ticket {str(ticket_cnt)}"
+            if raw_ticket_role is not None:
+                channal_name = channal_name + f" [{raw_ticket_role}]"
+            cnl = await cate.create_text_channel(channal_name)
+
         # 开票到频道上限报错
         except khl.requester.HTTPRequester.APIRequestFailed as e:
             # 发送错误提示
@@ -213,14 +221,15 @@ async def create_ticket(b: Bot, event: Event, ticket_role=None) -> Union[str, No
         )))
         with open('cfg/config.json', 'r', encoding='utf-8') as f:
             config = json.load(f)
+        await cnl.send("(met)here(met)", type=MessageTypes.KMD)
         await cnl.send(
             f'(met){sender}(met) 你的ticket已经建好啦！\n请直接在这里提出你的问题，我们的员工看到后会给您解答。',
-            type=MessageTypes.KMD, temp_target_id=str(sender))
-        await cnl.send("(met)here(met)", type=MessageTypes.KMD)
+            type=MessageTypes.KMD)
 
         # 没看明白先注释掉，应该是@对应用户组，现在是群发，先不加了
         # await cnl.send('(rol)' + str(target_role_id) + '(rol)', type=MessageTypes.KMD)
 
+        # config中填写"new_ticket"字段可以自动发送其中的消息
         try:
             if 'new_ticket' in config and config['new_ticket'] != "":
                 await cnl.send(config['new_ticket'], type=MessageTypes.KMD)
@@ -256,6 +265,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role=None) -> Union[str, No
         logging.warning(e)
 
     logging.info('TicketBot: creating ticket at guild ' + guild.name)
+
     # 取得全部分类，筛选出Ticket分类
     cate = await guild.fetch_channel_category_list()
     for c in cate:
@@ -269,6 +279,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role=None) -> Union[str, No
             return
 
     # 没有Ticket分类就不发了，并且报个临时错误
+    # TODO: 已经允许了，这是技术欠债(目前先不补，反正没人用)
     # 获取发送频道
     cnl = await b.client.fetch_public_channel(event.body['target_id'])
     await cnl.send("Ticket创建失败，请查看是否存在ticket分类。 *Kook目前不允许机器人创建分类，请手动进行*",

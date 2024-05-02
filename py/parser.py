@@ -51,3 +51,15 @@ async def sec2str(seconds: int) -> str:
 def get_time() -> str:
     sz = time.strftime('%Y-%m-%d %H:%M:%S')
     return '[' + sz + '] : '
+
+
+# 解析Ticket编号，用于重命名
+def extract_ticket_prefix(text: str = "") -> str:
+    # 正则表达式
+    match = re.search(r"ticket (\d+)", text)
+    if match:
+        # 捕获ticket编号
+        ticket_id = match.group(1)
+        return f"ticket {ticket_id}"
+    else:
+        return ""
