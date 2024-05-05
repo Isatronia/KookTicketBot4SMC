@@ -8,15 +8,17 @@
 ------------      -------    --------    -----------
 2022/7/8 11:32   ishgrina   1.0         None
 '''
+# import lib
 import json
 import logging
-# import lib
+import os
 import random
 
+# import khl.py
 from khl import *
 from khl.card import CardMessage, Card, Module, Element, Types, Struct
-from khl.guild import ChannelCategory
 
+# import coded scripts.
 import py.ticket_controller as ticket_controller
 from py.guild_service import guild_service
 from py.mute_controller import mute_user, unmute_user, check_all
@@ -26,15 +28,21 @@ from py.value import AUTH, ROLE
 from py.parser import timeParser, get_time, extract_ticket_prefix
 from py.manual_controller import manual
 
-# Global
 
-# Load Configuration
+# #############################################################################
+# 初始化程序代码
+# #############################################################################
+
+# 设置程序的工作路径
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+# 加载配置文件
 with open('cfg/config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 
-# Bot Initialization
+# 全局变量定义
+# 初始化机器人
 bot = Bot(token=config['token'])
-
 
 # #############################################################################
 # 指令模块
