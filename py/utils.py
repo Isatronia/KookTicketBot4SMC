@@ -9,22 +9,35 @@
 2024/4/25 20:02   ishgrina   1.0         None
 '''
 import asyncio
-import re
-import logging
+import heapq
 from typing import Union
 
 from khl import User, Guild, Message, Event
 
-from .parser import get_time
 from .value import ROLE, AUTH
 
 master_id = '859596959'
 
 
-
 # #############################################################################
 # 功能函数
 # #############################################################################
+
+class PriorityQueue:
+    def __init__(self):
+        self._heap = []
+
+    def push(self, item):
+        heapq.heappush(self._heap, item)
+
+    def peek(self):
+        return self._heap[0] if self._heap else None
+
+    def pop(self):
+        return heapq.heappop(self._heap) if self._heap else None
+
+    def is_empty(self):
+        return not self._heap
 
 
 # #############################################################################
@@ -53,7 +66,7 @@ async def getUserGuildAuthority(user: Union[User, str], guild: Union[Guild, None
     user_id = str(user_id)
 
     # 从配置文件抓取服务器员工id
-    staff = await guild_service.get_role_by_name(guild.id, ROLE.STAFF)
+    staff = await guild_service.get_role_by_tag(guild.id, ROLE.STAFF)
     staff = None if staff is None else list(map(int, staff))
 
     # 开始鉴权,初始化参数

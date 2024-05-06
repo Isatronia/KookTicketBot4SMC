@@ -112,7 +112,6 @@ async def remove_role(b: Bot, event: Event, tag: str, role: str):
     await cnl.send("没有找到 " + role + " 角色, 请尝试重新拉取角色列表")
 
 
-# bot主函数太大了，拆分这个功能过来
 # 生成新的服务单申请按钮
 # 数据格式为 create_ticket_{roleId}
 async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
@@ -122,7 +121,7 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
     # 开始构建卡片信息
     card = Card(Module.Section(
         Element.Text(
-            f"点击按钮申请一张{role_name}\n",
+            f"点击按钮申请一张{role_name}能看到的Ticket\n",
         ),
     ))
 
@@ -140,6 +139,8 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
         pass
     return
 
+async def assign_user(msg: Message):
+    return
 
 # #############################################################################
 # Ticket 相关代码
@@ -161,7 +162,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None]=Non
 
         sender = int(event.body['user_id'])
         # 查询当前用户已经创建的Ticket数量
-        ticket_cnt = await guild_service.apply(guild.id, event.body['user_id'])
+        ticket_cnt = await guild_service.apply_ticket(guild.id, event.body['user_id'])
 
         logging.info(f"User {sender} is applying ticket at [{guild.name}] | ticket count:" + str(ticket_cnt))
 
@@ -255,7 +256,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None]=Non
             ticket_role = list(map(int, ticket_role))
     except ValueError:
         logging.warning(f"Role id maybe integer. Param is :{ticket_role}")
-        ticket_role = await guild_service.get_role_by_name(guild.id, ticket_role[0])
+        ticket_role = await guild_service.get_role_by_tag(guild.id, ticket_role[0])
 
     # 自动更新对应服务器的数据
     try:

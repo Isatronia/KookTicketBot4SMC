@@ -15,7 +15,7 @@ import logging
 user.json:
 {
     ${guild_id}:{
-        ${user_id}: {cnt: 0}
+        ${user_id}: {'cnt': 0, 'assign': 0}
     }
 }
 '''
@@ -30,7 +30,8 @@ from .value import PATH
 
 class UserServiceImpl:
     data: dict = {}
-    lock: Lock = Lock()
+    wlock: Lock = Lock()
+    rlock: Lock = Lock()
 
     def __init__(self):
         try:
@@ -41,20 +42,20 @@ class UserServiceImpl:
 
 
     async def get(self, key) -> Union[dict, None]:
-        async with self.lock:
+        async with self.wlock:
             try:
                 return self.data[key]
             except KeyError:
                 return None
 
     async def set(self, key, value) -> None:
-        async with self.lock:
+        async with self.wlock and self.rlock:
             self.data[key] = value
             with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     async def get_guild_cnt(self, user_id, guild_id) -> Union[int, None]:
-        async with self.lock:
+        async with self.rlock:
             if guild_id not in self.data:
                 self.data[guild_id] = {user_id: {'cnt': 0}}
                 return 0
@@ -64,7 +65,7 @@ class UserServiceImpl:
             return self.data[guild_id][user_id]['cnt']
 
     async def set_guild_cnt(self, user_id, guild_id, cnt) -> None:
-        async with self.lock:
+        async with self.wlock and self.rlock:
             if guild_id not in self.data:
                 self.data[guild_id] = {user_id: {'cnt': cnt}}
             elif user_id not in self.data[guild_id]:
@@ -81,7 +82,7 @@ class UserServiceImpl:
         except TypeError:
             logging.error("User Id must be number.")
             return
-        async with self.lock:
+        async with self.wlock:
             try:
                 if guild_id not in self.data:
                     self.data[guild_id] = {user_id: {'cnt': 1}}
@@ -95,7 +96,7 @@ class UserServiceImpl:
                 json.dump(self.data, f, ensure_ascii=False, indent=4)
 
     async def close(self, user_id, guild_id):
-        async with self.lock:
+        async with self.wlock:
             try:
                 if guild_id not in self.data:
                     self.data[guild_id] = {user_id: {'cnt': 0}}
@@ -113,7 +114,7 @@ class UserServiceImpl:
 
     # 重置某个用户在特定guild的所有数据
     async def reset(self, user_id, guild_id):
-        async with self.lock:
+        async with self.wlock:
             if guild_id not in self.data:
                 self.data[guild_id] = {user_id: {'cnt': 0}}
             elif user_id not in self.data[guild_id]:

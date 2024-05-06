@@ -33,7 +33,7 @@ LOG_HEADER = ' [guild_service.py] '
 
 
 class GuildServiceImpl:
-    data: dict = {}
+    _data: dict = {}
     action_lock: Lock = Lock()
     io_lock: Lock = Lock()
     init_lock: Lock = Lock()
@@ -42,17 +42,17 @@ class GuildServiceImpl:
     def __init__(self):
         try:
             with open(PATH.GUILD_DATA, 'r', encoding='utf-8') as f:
-                self.data = json.load(f)
+                self._data = json.load(f)
                 pass
         except FileNotFoundError:
-            self.data = {}
+            self._data = {}
 
     # 把数据保存到本地文件
     async def save_data(self) -> None:
         async with self.io_lock:
             try:
                 with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
-                    json.dump(self.data, f, ensure_ascii=False, indent=4)
+                    json.dump(self._data, f, ensure_ascii=False, indent=4)
             except Exception as e:
                 logging.error(str(e))
         return None
@@ -62,48 +62,48 @@ class GuildServiceImpl:
         async with self.io_lock:
             try:
                 with open(PATH.GUILD_DATA, 'r', encoding='utf-8') as f:
-                    self.data = json.load(f)
+                    self._data = json.load(f)
                     pass
             except FileNotFoundError:
-                self.data = {}
+                self._data = {}
 
     # 初始化服务器信息
     # 新增服务器时初始化数据
     async def init_guild(self, guild_id):
         await self.read_data()
-        if guild_id not in self.data:
+        if guild_id not in self._data:
             async with self.init_lock:
-                if guild_id not in self.data:
-                    self.data[guild_id] = {'cnt': 1, 'role': {}, 'channel': {}}
+                if guild_id not in self._data:
+                    self._data[guild_id] = {'cnt': 1, 'role': {}, 'channel': {}}
                     await self.save_data()
 
     # 检查服务器是否在机器人的数据库中注册,如果没有就注册。
     # 用于确保访问时能够获取服务器
     async def check_guild(self, guild_id) -> None:
         async with self.action_lock:
-            if guild_id not in self.data:
+            if guild_id not in self._data:
                 await self.init_guild(guild_id)
         return
 
     # 获取服务器信息
     async def get(self, guild_id) -> dict:
-        return self.data[guild_id]
+        return self._data[guild_id]
 
     # 根据角色名获取 已注册在机器人数据库中的 服务器的角色信息
-    async def get_role_by_name(self, guild_id, role_name) -> Union[list, None]:
+    async def get_role_by_tag(self, guild_id, role_tag) -> Union[list, None]:
         await self.read_data()
         async with self.action_lock:
             matching_ids = []
             try:
-                d = self.data[guild_id]['role']
+                d = self._data[guild_id]['role']
                 for role_id in d:
-                    if 'tag' in d[role_id] and role_name in d[role_id]['tag']:
+                    if 'tag' in d[role_id] and role_tag in d[role_id]['tag']:
                         matching_ids.append(role_id)
                 # return self.data[guild_id]['role'][role_name]
             except KeyError:
                 return None
             if len(matching_ids) == 0:
-                logging.warning(f"Finding role {role_name} in {guild_id} but not found. Return None.")
+                logging.warning(f"Finding role {role_tag} in {guild_id} but not found. Return None.")
                 return None
                 # raise KeyError("Role Not Found")
             return matching_ids
@@ -112,8 +112,8 @@ class GuildServiceImpl:
         await self.read_data()
         async with self.action_lock:
             try:
-                if role_id in self.data[guild_id]['role']:
-                    return self.data[guild_id]['role'][role_id]['tag']
+                if role_id in self._data[guild_id]['role']:
+                    return self._data[guild_id]['role'][role_id]['tag']
             except KeyError:
                 return None
 
@@ -122,7 +122,7 @@ class GuildServiceImpl:
         await self.read_data()
         async with self.action_lock:
             try:
-                return self.data[guild_id]['role']
+                return self._data[guild_id]['role']
             except KeyError:
                 return None
 
@@ -130,15 +130,15 @@ class GuildServiceImpl:
     async def try_set_role_tag(self, guild_id, role_tag, role_id) -> Union[bool, None]:
         await self.check_guild(guild_id)
         async with self.action_lock:
-            if 'role' not in self.data[guild_id]:
-                self.data[guild_id]['role'] = {}
+            if 'role' not in self._data[guild_id]:
+                self._data[guild_id]['role'] = {}
             # 注册新角色数据
-            if role_id not in self.data[guild_id]['role']:
-                self.data[guild_id]['role'][role_id] = {'tag': [role_tag], 'permission': []}
+            if role_id not in self._data[guild_id]['role']:
+                self._data[guild_id]['role'][role_id] = {'tag': [role_tag], 'permission': []}
                 await self.save_data()
                 return True
-            elif role_tag not in self.data[guild_id]['role'][role_id]['tag']:
-                self.data[guild_id]['role'][role_id]['tag'].append(role_tag)
+            elif role_tag not in self._data[guild_id]['role'][role_id]['tag']:
+                self._data[guild_id]['role'][role_id]['tag'].append(role_tag)
                 await self.save_data()
                 return True
             else:
@@ -147,13 +147,13 @@ class GuildServiceImpl:
     async def try_remove_role_tag(self, guild_id, role_tag, role_id) -> Union[bool, None]:
         await self.check_guild(guild_id)
         async with self.action_lock:
-            if 'role' not in self.data[guild_id]:
+            if 'role' not in self._data[guild_id]:
                 return None
-            if role_id not in self.data[guild_id]['role']:
+            if role_id not in self._data[guild_id]['role']:
                 return None
-            if isinstance(self.data[guild_id]['role'][role_id]['tag'], list) and role_tag in \
-                    self.data[guild_id]['role'][role_id]['tag']:
-                self.data[guild_id]['role'][role_id]['tag'].remove(role_tag)
+            if isinstance(self._data[guild_id]['role'][role_id]['tag'], list) and role_tag in \
+                    self._data[guild_id]['role'][role_id]['tag']:
+                self._data[guild_id]['role'][role_id]['tag'].remove(role_tag)
                 await self.save_data()
                 return True
             else:
@@ -163,7 +163,7 @@ class GuildServiceImpl:
         await self.check_guild(guild_id)
         async with self.action_lock:
             try:
-                self.data[guild_id]['max'] = maxium_ticket
+                self._data[guild_id]['max'] = maxium_ticket
                 return True
             except KeyError as e:
                 logging.warning('Trying assign max ticket limit to an empty guild.')
@@ -171,24 +171,24 @@ class GuildServiceImpl:
                 return False
 
     # 从某个服务器申请服务单
-    async def apply(self, guild_id, user_id) -> Union[int, None]:
+    async def apply_ticket(self, guild_id, user_id) -> Union[int, None]:
         async with self.action_lock:
             user_guild_cnt = await user_service.get_guild_cnt(user_id, guild_id)
 
             # 检查是否达到单人开票数量最大张数，如果达到了就不开。
             # 如果未设置最大开票张数，默认为2
-            if 'max' not in self.data[guild_id]:
-                self.data[guild_id]['max'] = 2
+            if 'max' not in self._data[guild_id]:
+                self._data[guild_id]['max'] = 2
 
             # 如果超出单人开票张数限制
-            if self.data[guild_id]['max'] <= user_guild_cnt:
+            if self._data[guild_id]['max'] <= user_guild_cnt:
                 return None
 
             await user_service.open(user_id, guild_id)
-            self.data[guild_id]['cnt'] += 1
+            self._data[guild_id]['cnt'] += 1
             with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=4)
-            return self.data[guild_id]['cnt']
+                json.dump(self._data, f, ensure_ascii=False, indent=4)
+            return self._data[guild_id]['cnt']
 
     # 释放某个服务器的服务单
     async def close(self, guild_id, user_id):
@@ -204,7 +204,7 @@ class GuildServiceImpl:
         async with self.action_lock:
             await self.read_data()
             try:
-                return self.data[guild_id]['channel'][channel_tag]
+                return self._data[guild_id]['channel'][channel_tag]
             except KeyError:
                 return None
 
@@ -212,9 +212,9 @@ class GuildServiceImpl:
     async def set_channel(self, guild_id, channel_tag, channel_id):
         await self.check_guild(guild_id)
         async with self.action_lock:
-            if 'channel' not in self.data[guild_id]:
-                self.data[guild_id]['channel'] = {}
-            self.data[guild_id]['channel'][channel_tag] = channel_id
+            if 'channel' not in self._data[guild_id]:
+                self._data[guild_id]['channel'] = {}
+            self._data[guild_id]['channel'][channel_tag] = channel_id
             await self.save_data()
 
 

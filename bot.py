@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import random
+import threading
 
 # import khl.py
 from khl import *
@@ -27,22 +28,6 @@ from py.utils import check_authority, getUserGuildAuthority, CheckAuth
 from py.value import AUTH, ROLE
 from py.parser import timeParser, get_time, extract_ticket_prefix
 from py.manual_controller import manual
-
-
-# #############################################################################
-# 初始化程序代码
-# #############################################################################
-
-# 设置程序的工作路径
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
-# 加载配置文件
-with open('cfg/config.json', 'r', encoding='utf-8') as f:
-    config = json.load(f)
-
-# 全局变量定义
-# 初始化机器人
-bot = Bot(token=config['token'])
 
 # #############################################################################
 # 指令模块
@@ -150,11 +135,11 @@ async def mute(msg: Message, user_id: str, mute_time: str, reason: str):
         'Authorized. begin mute process， muting' + user_id + ' in guild' + msg.ctx.guild.name + '(id is: ' + msg.ctx.guild.id + ')')
 
     # 检查静音用户是否存在，并设置静音角色 （Tag）
-    mute_role = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
+    mute_role = await guild_service.get_role_by_tag(msg.ctx.guild.id, ROLE.MUTE)
 
     # 错误检测，没有设置静音角色（Tag）
     if mute_role is None:
-        logging.warning(get_time() + 'mute role not found. cur data is : + \n' + str(guild_service.data))
+        logging.warning(get_time() + 'mute role not found. cur data is : + \n' + str(guild_service._data))
         await msg.ctx.channel.send(CardMessage(Card(
             Module.Header('Error occurred'),
             Module.Section('还没有设置Mute角色啊 kora!!')
@@ -184,7 +169,7 @@ async def unmute(msg: Message, userid: str):
     logging.info('unmute user ' + userid + ' at ' + msg.ctx.guild.name + '(id is {:} )'.format(msg.ctx.guild.id))
 
     # 获取静音用户
-    mute_role = await guild_service.get_role_by_name(msg.ctx.guild.id, ROLE.MUTE)
+    mute_role = await guild_service.get_role_by_tag(msg.ctx.guild.id, ROLE.MUTE)
 
     # 错误检测
     if mute_role is None:
@@ -240,6 +225,12 @@ async def rename(msg: Message, *args):
         await msg.reply(str(e), is_temp=True)
         await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
 
+
+@bot.command(name="assign")
+async def assign(msg: Message):
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
+        return
+    await ticket_controller.assign_user(msg)
 
 @bot.command(name='dice', aliases=['d'])
 async def dice(msg: Message, mx: int):
@@ -350,8 +341,24 @@ async def world(msg: Message):
 # #########################################################################################
 # 主程序入口
 # #########################################################################################
-logging.basicConfig(level='INFO', format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
-# logging.basicConfig(level='DEBUG', format='%(asctime)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)')
-bot.run()
+if __name__ == "__main__":
+    # #############################################################################
+    # 初始化程序代码
+    # #############################################################################
+
+    # 设置程序的工作路径
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    logging.basicConfig(level='INFO', format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
+
+    # 加载配置文件
+    with open('cfg/config.json', 'r', encoding='utf-8') as f:
+        config = json.load(f)
+
+    mute_observer = threading.Thread()
+
+    # 全局变量定义
+    # 初始化机器人
+    bot = Bot(token=config['token'])
+    bot.run()
 
 # await channel.update_permission(user, allow=(2048 | 4096))
