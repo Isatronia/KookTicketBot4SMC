@@ -16,7 +16,6 @@ import random
 import threading
 from typing import Union
 
-
 # import khl.py
 from khl import Bot, Message, Event, EventTypes, User, Guild
 from khl.card import CardMessage, Card, Module, Element, Types, Struct
@@ -244,15 +243,16 @@ async def assign(msg: Message):
     await msg.reply(f"操作成功, 当前数据为：{val}")
 
 
-@bot.command(name="design", aliases=['ds'])
+@bot.command(name="deassign", aliases=['ds'])
 async def design(msg: Message):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
     val = await ticket_controller.design_user(msg)
     await msg.reply(f"操作成功, 当前数据为：{val}")
 
+
 @bot.command(name="getKey", aliases=["get"])
-async def get_user_key(msg: Message, key, user: Union[str, None] = None):
+async def get_user_key(msg: Message, key, user=None):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
     if user is None:
@@ -260,7 +260,6 @@ async def get_user_key(msg: Message, key, user: Union[str, None] = None):
     else:
         value = await user_service.try_get_user_key(user_id=user, guild_id=msg.ctx.guild.id, key=key)
     await msg.reply(f"查询到数据：{value}")
-
 
 
 @bot.command(name='dice', aliases=['d'])
