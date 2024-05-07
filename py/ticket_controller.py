@@ -139,8 +139,28 @@ async def setup_ticket_generator(b: Bot, msg: Message, role_name: str):
         pass
     return
 
+
 async def assign_user(msg: Message):
-    return
+    assigned = await user_service.try_get_user_key(msg.author.id, msg.ctx.guild.id, "assign")
+    if assigned is None:
+        assigned = 1
+    else:
+        assigned += 1
+    await user_service.try_set_user_key(msg.author.id, msg.ctx.guild.id, "assign", assigned)
+    logging.info(f"assign user {msg.author.nickname}(id:{msg.author.id}) task cnt: {assigned}")
+    return assigned
+
+
+async def design_user(msg: Message):
+    assigned = await user_service.try_get_user_key(msg.author.id, msg.ctx.guild.id, "assign")
+    if assigned is None:
+        assigned = 0
+    else:
+        assigned = max(assigned - 1, 0)
+    await user_service.try_set_user_key(msg.author.id, msg.ctx.guild.id, "assign", assigned)
+    logging.info(f"design user {msg.author.nickname}(id:{msg.author.id}) task cnt: {assigned}")
+    return assigned
+
 
 # #############################################################################
 # Ticket 相关代码
@@ -150,7 +170,7 @@ async def assign_user(msg: Message):
 # #############################################################################
 
 # 创建Ticekt
-async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None]=None) -> Union[str, None]:
+async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = None) -> Union[str, None]:
     if ticket_role is None:
         ticket_role = list()
 

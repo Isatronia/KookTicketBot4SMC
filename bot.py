@@ -14,9 +14,11 @@ import logging
 import os
 import random
 import threading
+from typing import Union
+
 
 # import khl.py
-from khl import *
+from khl import Bot, Message, Event, EventTypes, User, Guild
 from khl.card import CardMessage, Card, Module, Element, Types, Struct
 
 # import coded scripts.
@@ -27,7 +29,26 @@ from py.user_service import user_service
 from py.utils import check_authority, getUserGuildAuthority, CheckAuth
 from py.value import AUTH, ROLE
 from py.parser import timeParser, get_time, extract_ticket_prefix
-from py.manual_controller import manual
+
+# from py.manual_controller import manual
+
+# #############################################################################
+# 初始化程序代码
+# #############################################################################
+
+# 设置程序的工作路径
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+# 加载配置文件
+with open('cfg/config.json', 'r', encoding='utf-8') as f:
+    config = json.load(f)
+
+mute_observer = threading.Thread()
+
+# 全局变量定义
+# 初始化机器人
+bot = Bot(token=config['token'])
+
 
 # #############################################################################
 # 指令模块
@@ -168,17 +189,6 @@ async def unmute(msg: Message, userid: str):
     # log
     logging.info('unmute user ' + userid + ' at ' + msg.ctx.guild.name + '(id is {:} )'.format(msg.ctx.guild.id))
 
-    # 获取静音用户
-    mute_role = await guild_service.get_role_by_tag(msg.ctx.guild.id, ROLE.MUTE)
-
-    # 错误检测
-    if mute_role is None:
-        await msg.ctx.channel.send(CardMessage(Card(
-            Module.Header('Error occurred'),
-            Module.Section('还没有设置Mute角色啊 kora!!')
-        )), temp_target_id=msg.author.id)
-        return
-
     # 获取用户
     user = await bot.client.fetch_user(userid)
 
@@ -197,7 +207,7 @@ async def unmute(msg: Message, userid: str):
 async def man(msg: Message, cmd: str = ''):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
-    await manual(msg, cmd)
+    await ticket_controller.manual(msg, cmd)
 
 
 # clean user Record
@@ -226,11 +236,32 @@ async def rename(msg: Message, *args):
         await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
 
 
-@bot.command(name="assign")
+@bot.command(name="assign", aliases=['as'])
 async def assign(msg: Message):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
-    await ticket_controller.assign_user(msg)
+    val = await ticket_controller.assign_user(msg)
+    await msg.reply(f"操作成功, 当前数据为：{val}")
+
+
+@bot.command(name="design", aliases=['ds'])
+async def design(msg: Message):
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
+        return
+    val = await ticket_controller.design_user(msg)
+    await msg.reply(f"操作成功, 当前数据为：{val}")
+
+@bot.command(name="getKey", aliases=["get"])
+async def get_user_key(msg: Message, key, user: Union[str, None] = None):
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
+        return
+    if user is None:
+        value = await user_service.try_get_user_key(message=msg, key=key)
+    else:
+        value = await user_service.try_get_user_key(user_id=user, guild_id=msg.ctx.guild.id, key=key)
+    await msg.reply(f"查询到数据：{value}")
+
+
 
 @bot.command(name='dice', aliases=['d'])
 async def dice(msg: Message, mx: int):
@@ -342,23 +373,7 @@ async def world(msg: Message):
 # 主程序入口
 # #########################################################################################
 if __name__ == "__main__":
-    # #############################################################################
-    # 初始化程序代码
-    # #############################################################################
-
-    # 设置程序的工作路径
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     logging.basicConfig(level='INFO', format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
-
-    # 加载配置文件
-    with open('cfg/config.json', 'r', encoding='utf-8') as f:
-        config = json.load(f)
-
-    mute_observer = threading.Thread()
-
-    # 全局变量定义
-    # 初始化机器人
-    bot = Bot(token=config['token'])
     bot.run()
 
 # await channel.update_permission(user, allow=(2048 | 4096))

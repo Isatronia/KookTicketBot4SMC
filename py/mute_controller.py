@@ -14,6 +14,7 @@ import logging
 
 import time
 from khl import Bot, Message, User
+from khl.card import CardMessage, Card, Module
 from .guild_service import guild_service
 from .mute_service import mute_service
 from .value import ROLE
@@ -37,7 +38,13 @@ async def unmute_user(msg: Message, user: User):
     # 为用户解除禁言角色并且私聊发送原因
     # 获取禁言角色
     muted_roles = await guild_service.get_role_by_tag(msg.ctx.guild.id, ROLE.MUTE)
-
+    # 错误检测
+    if muted_roles is None or len(muted_roles) == 1:
+        await msg.ctx.channel.send(CardMessage(Card(
+            Module.Header('Error occurred'),
+            Module.Section('还没有设置Mute角色啊 kora!!')
+        )), temp_target_id=msg.author.id)
+        return
     # 为用户解除禁言角色
     await msg.ctx.guild.revoke_role(user, muted_roles[0])
     await user.send('你已被解除禁言。')
@@ -52,10 +59,10 @@ async def check_all(bot: Bot):
         guild_id = rec['guild_id']
         guild = await bot.client.fetch_guild(guild_id)
         user = await bot.client.fetch_user(user_id)
-        role = await guild_service.get_role_by_tag(guild_id, ROLE.MUTE)
+        roles = await guild_service.get_role_by_tag(guild_id, ROLE.MUTE)
         try:
             await mute_service.unmute(user_id, guild_id)
-            await guild.revoke_role(user, role)
+            await guild.revoke_role(user, roles[0])
         except Exception as e:
             logging.error(e)
             logging.error('unmute user failed, user_id is ' + str(user_id))
