@@ -41,54 +41,74 @@ from .value import PATH
 class MuteServiceImpl:
     _data: dict = None
     _mute_que = PriorityQueue()
-    # rlock: Lock = Lock()
-    wlock: Lock = Lock()
-    qlock: Lock = Lock()
-    # chk_lock: Lock = Lock()
+    # 文件锁，文件读写用
+    _flock: Lock = Lock()
+    # 写锁，内存数据读写用
+    _wlock: Lock = Lock()
+    # 队列锁，禁言时间通知队列用
+    _qlock: Lock = Lock()
 
     def __init__(self):
-        if self._data is None:
+        self._load()
+
+    def _load(self):
+        if self._get_data() is None:
             try:
-                if self._data is None:
+                if self._get_data() is None:
                     with open(PATH.MUTE_DATA, 'r', encoding='utf-8') as f:
-                        self._data = json.load(f)
+                        MuteServiceImpl._data = json.load(f)
             except FileNotFoundError:
-                self._data = {}
+                MuteServiceImpl._data = {}
+
+    def _store(self):
+        with open(PATH.MUTE_DATA, 'w', encoding='utf-8') as f:
+            json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
+
+    def _get_data(self):
+        return MuteServiceImpl._data
+    
+    def _get_queue(self):
+        return MuteServiceImpl._mute_que
+
+    async def load(self):
+        async with MuteServiceImpl._flock:
+            self._load()
+
+    async def store(self):
+        async with MuteServiceImpl._flock:
+            self._store()
 
     async def get_guild_cnt(self, user_id, guild_id) -> Union[float, None]:
-        if user_id not in self._data:
-            self._data[user_id] = {}
-        if guild_id not in self._data[user_id]:
+        if user_id not in self._get_data():
+            self._get_data()[user_id] = {}
+        if guild_id not in self._get_data()[user_id]:
             return 0.
-        return self._data[user_id][guild_id]
+        return self._get_data()[user_id][guild_id]
 
     async def set_guild_cnt(self, user_id: str, guild_id: str, mute_time: float) -> None:
-        async with self.wlock and self.qlock:
-            if user_id not in self._data:
-                self._data[user_id] = {}
-            self._data[user_id][guild_id] = mute_time
-            self._mute_que.put((mute_time, guild_id, user_id))
-            with open(PATH.MUTE_DATA, 'w', encoding='utf-8') as f:
-                json.dump(self._data, f, ensure_ascii=False, indent=4)
+        async with MuteServiceImpl._wlock and MuteServiceImpl._qlock:
+            if user_id not in self._get_data():
+                self._get_data()[user_id] = {}
+            self._get_data()[user_id][guild_id] = mute_time
+            MuteServiceImpl._mute_que.put((mute_time, guild_id, user_id))
 
     async def is_timeup(self, user_id: str, guild_id: str) -> bool:
-        if user_id not in self._data:
+        if user_id not in self._get_data():
             return False
-        if guild_id not in self._data[user_id]:
+        if guild_id not in self._get_data()[user_id]:
             return False
         # 到时间了，解除禁言
-        if time.time() >= self._data[user_id][guild_id]:
+        if time.time() >= self._get_data()[user_id][guild_id]:
             logging.info('user mute times up:' + user_id)
             # clean this Record
-            # await self.unmute(user_id, guild_id)
             return True
         return False
 
     async def check(self) -> list:
-        async with self.wlock:
+        async with MuteServiceImpl._wlock:
             res = []
-            for user_id in self._data:
-                for guild_id in self._data[user_id]:
+            for user_id in self._get_data():
+                for guild_id in self._get_data()[user_id]:
                     if await self.is_timeup(user_id, guild_id):
                         res.append({'user_id': user_id, 'guild_id': guild_id})
         return res
@@ -97,38 +117,36 @@ class MuteServiceImpl:
         await self.set_guild_cnt(user, guild, mute_time)
 
     async def unmute(self, user: str, guild: str) -> None:
-        async with self.wlock:
+        async with MuteServiceImpl._wlock:
             logging.info('user unmuted:' + user)
-            if user not in self._data:
+            if user not in self._get_data():
                 return
-            if guild not in self._data[user]:
+            if guild not in self._get_data()[user]:
                 return
             # clean this Record
-            del self._data[user][guild]
-            if len(self._data[user]) == 0:
-                del self._data[user]
+            del self._get_data()[user][guild]
+            if len(self._get_data()[user]) == 0:
+                del self._get_data()[user]
             with open(PATH.MUTE_DATA, 'w', encoding='utf-8') as f:
-                json.dump(self._data, f, ensure_ascii=False, indent=4)
+                json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
 
     async def queue_refresh(self):
-        if self._data is None:
+        if self._get_data() is None:
             return
-        async with self.wlock and self.qlock:
-            self._mute_que = PriorityQueue()
-            for u in self._data:
+        async with MuteServiceImpl._wlock and MuteServiceImpl._qlock:
+            MuteServiceImpl._mute_que = PriorityQueue()
+            for u in self._get_data():
                 for g in u:
                     for t in g:
-                        self._mute_que.put((t, g, u))
+                        MuteServiceImpl._mute_que.put((t, g, u))
         return
 
     async def query_nearest_unmute_user(self):
-        async with self.qlock:
-            return self._mute_que.peek()
-
+        async with MuteServiceImpl._qlock:
+            return MuteServiceImpl._mute_que.peek()
 
 
 mute_service = MuteServiceImpl()
-
 
 # class MuteService:
 #     lock: Lock = Lock()

@@ -8,6 +8,7 @@
 ------------      -------    --------    -----------
 2023/2/6 16:04   ishgrina   1.0         None
 '''
+import logging
 
 # import lib
 from khl import Bot, Message, MessageTypes, User, Guild, Event, ChannelTypes
@@ -48,5 +49,6 @@ async def manual(msg: Message, txt: str):
                 cm.append(cd)
                 await msg.ctx.channel.send(cm)
         except FileNotFoundError as e:
+            logging.warning(f"Trying open manual file {txt} but not found.")
             return
     return

@@ -13,21 +13,23 @@ import json
 import logging
 import os
 import random
+import signal
+import sys
 import threading
-from typing import Union
 
 # import khl.py
-from khl import Bot, Message, Event, EventTypes, User, Guild
+from khl import Bot, Message, Event, EventTypes
 from khl.card import CardMessage, Card, Module, Element, Types, Struct
 
 # import coded scripts.
 import py.ticket_controller as ticket_controller
 from py.guild_service import guild_service
+from py.mute_service import mute_service
 from py.mute_controller import mute_user, unmute_user, check_all
-from py.user_service import user_service
-from py.utils import check_authority, getUserGuildAuthority, CheckAuth
-from py.value import AUTH, ROLE
 from py.parser import timeParser, get_time, extract_ticket_prefix
+from py.user_service import user_service
+from py.utils import check_authority, getUserGuildAuthority
+from py.value import AUTH, ROLE
 
 # from py.manual_controller import manual
 
@@ -49,12 +51,28 @@ mute_observer = threading.Thread()
 bot = Bot(token=config['token'])
 
 
+@bot.on_startup
+async def creator():
+    return
+
+
+@bot.on_shutdown
+async def destructor():
+    await shutdown()
+
+
+async def shutdown():
+    await user_service.store()
+    await guild_service.store()
+    await mute_service.store()
+
+
 # #############################################################################
 # 指令模块
 # #############################################################################
 # 发送可以创建Ticket的消息
 @bot.command(name='setup')
-async def setupTicketBot(msg: Message, role: str = 'staff'):
+async def setup_ticket_bot(msg: Message, role: str = 'staff'):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
     await ticket_controller.setup_ticket_generator(bot, msg, role)
@@ -99,7 +117,7 @@ async def del_role(msg: Message, rolename: str):
 
 # Debug功能，显示当前服务器的所有已在数据库中注册的角色信息
 @bot.command(name='listrole')
-async def listrole(msg: Message):
+async def list_role(msg: Message):
     if not await check_authority(msg, AUTH.ADMIN):
         return
     logging.info('listting role...')
