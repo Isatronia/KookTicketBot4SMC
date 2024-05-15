@@ -52,6 +52,7 @@ bot = Bot(token=config['token'])
 
 @bot.on_shutdown
 async def destructor(b: Bot):
+    logging.info("Shutting down...")
     await shutdown()
 
 
