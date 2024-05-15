@@ -50,14 +50,8 @@ mute_observer = threading.Thread()
 # 初始化机器人
 bot = Bot(token=config['token'])
 
-
-@bot.on_startup
-async def creator():
-    return
-
-
 @bot.on_shutdown
-async def destructor():
+async def destructor(b: Bot):
     await shutdown()
 
 
