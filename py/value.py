@@ -10,6 +10,7 @@
 '''
 
 # import lib
+import os
 
 # 角色基础权限控制
 class AUTH:
@@ -18,11 +19,11 @@ class AUTH:
 
 # 配置文件路径
 class PATH:
-    GUILD_DATA = './cfg/data.json'
-    USER_DATA = './cfg/user.json'
-    MUTE_DATA = './cfg/mute.json'
-    MAN_DATA = './README.md'
-    MAN_PATH = './cfg/man/'
+    GUILD_DATA = os.getcwd() + '/cfg/data.json'
+    USER_DATA = os.getcwd() + '/cfg/user.json'
+    MUTE_DATA = os.getcwd() + '/cfg/mute.json'
+    MAN_DATA = os.getcwd() + '/README.md'
+    MAN_PATH = os.getcwd() + '/cfg/man/'
 
 # 角色标识
 class ROLE:

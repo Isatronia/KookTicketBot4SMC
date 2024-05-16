@@ -14,7 +14,7 @@ import logging
 import os
 import random
 import signal
-import sys
+import asyncio
 import threading
 
 # import khl.py
@@ -39,7 +39,7 @@ from py.value import AUTH, ROLE
 
 # 设置程序的工作路径
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
+logging.info(f"Current working directory is: {os.getcwd()}")
 # 加载配置文件
 with open('cfg/config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
@@ -50,17 +50,16 @@ mute_observer = threading.Thread()
 # 初始化机器人
 bot = Bot(token=config['token'])
 
+
 @bot.on_shutdown
 async def destructor(b: Bot):
     logging.info("Shutting down...")
-    await shutdown()
-
-
-async def shutdown():
     await user_service.store()
+    logging.info("User data saved.")
     await guild_service.store()
+    logging.info("Guild data saved.")
     await mute_service.store()
-
+    logging.info("Mute data saved.")
 
 # #############################################################################
 # 指令模块
