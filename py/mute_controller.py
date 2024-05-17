@@ -8,9 +8,10 @@
 ------------      -------    --------    -----------
 2022/7/17 10:25   ishgrina   1.0         None
 '''
-
+import asyncio
 # import lib
 import logging
+import threading
 
 import time
 from khl import Bot, Message, User
@@ -29,9 +30,9 @@ async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
     mute_time = time.time() + mute_time
 
     # 为用户设置禁言角色
+    await mute_service.mute(msg.ctx.guild.id, user.id, mute_time)
     await msg.ctx.guild.grant_role(user, muted_roles[0])
     await user.send('你因为 ' + reason + ' 已被禁言， 请私聊管理解禁。')
-    await mute_service.mute(msg.ctx.guild.id, user.id, mute_time)
 
 
 async def unmute_user(msg: Message, user: User):
@@ -68,4 +69,34 @@ async def check_all(bot: Bot):
             logging.error('unmute user failed, user_id is ' + str(user_id))
             continue
 
+async def unmute_user_from_guild(bot: Bot, user_id, guild_id):
+    mute_role = await guild_service.get_role_by_tag(guild_id, ROLE.MUTE)
+    guild = await bot.client.fetch_guild(guild_id)
+    try:
+        await mute_service.unmute(user_id, guild_id)
+        await guild.revoke_role(user_id, mute_role[0])
+    except Exception as e:
+        logging.error(e)
+        logging.error('unmute user failed, user_id is ' + str(user_id))
 
+
+def mute_suspend(bot: Bot, start_signal: threading.Event):
+    logging.info(f"Mute suspend thread loaded. Event status is {start_signal.is_set()}")
+    try:
+        start_signal.wait()
+        logging.info(f"Mute service thread started.")
+        while True and start_signal.is_set():
+            next_time = mute_service.query_nearest_unmute_user()
+            if next_time is not None and time.time() >= next_time[0]:
+                fea = asyncio.run_coroutine_threadsafe(
+                    unmute_user_from_guild(bot, next_time[2], next_time[1]),
+                    bot.loop)
+                try:
+                    result = fea.result(timeout=30)
+                except TimeoutError:
+                    logging.warning(f"Unmute action time out, canceled.")
+                    fea.cancel()
+                except BaseException as e:
+                    logging.error(e)
+    except KeyboardInterrupt:
+        return

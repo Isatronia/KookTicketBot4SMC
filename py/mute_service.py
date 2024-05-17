@@ -17,7 +17,7 @@ import queue
 {
     "user_id": {
         "guild_id": 
-            "mute_time": when unmuted, timestamp
+            {mute_time:float} when unmuted, timestamp
     }
 }
 禁言队列消息格式为：
@@ -58,6 +58,7 @@ class MuteServiceImpl:
                     with open(PATH.MUTE_DATA, 'r', encoding='utf-8') as f:
                         MuteServiceImpl._data = json.load(f)
             except FileNotFoundError:
+                logging.error(f"Mute Data file not found. Initializing...")
                 MuteServiceImpl._data = {}
 
     def _store(self):
@@ -118,17 +119,18 @@ class MuteServiceImpl:
 
     async def unmute(self, user: str, guild: str) -> None:
         async with MuteServiceImpl._wlock:
-            logging.info('user unmuted:' + user)
             if user not in self._get_data():
                 return
             if guild not in self._get_data()[user]:
                 return
             # clean this Record
+            time_up = self._get_data()[user][guild]
+            self._mute_que.delete((time_up, guild, user))
             del self._get_data()[user][guild]
             if len(self._get_data()[user]) == 0:
                 del self._get_data()[user]
-            with open(PATH.MUTE_DATA, 'w', encoding='utf-8') as f:
-                json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
+            await self.store()
+            logging.info('user unmuted:' + user)
 
     async def queue_refresh(self):
         if self._get_data() is None:
@@ -141,9 +143,9 @@ class MuteServiceImpl:
                         MuteServiceImpl._mute_que.put((t, g, u))
         return
 
-    async def query_nearest_unmute_user(self):
-        async with MuteServiceImpl._qlock:
-            return MuteServiceImpl._mute_que.peek()
+
+    def query_nearest_unmute_user(self):
+        return MuteServiceImpl._mute_que.peek()
 
 
 mute_service = MuteServiceImpl()

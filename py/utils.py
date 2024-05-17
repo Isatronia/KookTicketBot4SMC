@@ -10,6 +10,7 @@
 '''
 import asyncio
 import heapq
+import threading
 from typing import Union
 
 from khl import User, Guild, Message, Event
@@ -26,18 +27,31 @@ master_id = '859596959'
 class PriorityQueue:
     def __init__(self):
         self._heap = []
+        self._write_lock = threading.Lock()
+
+    def put(self, item):
+        with self._write_lock:
+            heapq.heappush(self._heap, item)
 
     def push(self, item):
-        heapq.heappush(self._heap, item)
+        self.put(item)
 
     def peek(self):
         return self._heap[0] if self._heap else None
 
     def pop(self):
-        return heapq.heappop(self._heap) if self._heap else None
+        with self._write_lock:
+            return heapq.heappop(self._heap) if self._heap else None
 
     def is_empty(self):
         return not self._heap
+
+    def delete(self, item):
+        with self._write_lock:
+            self._heap.remove(item)
+
+    def __str__(self):
+        return str(self._heap)
 
 
 # #############################################################################

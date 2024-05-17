@@ -25,7 +25,7 @@ from khl.card import CardMessage, Card, Module, Element, Types, Struct
 import py.ticket_controller as ticket_controller
 from py.guild_service import guild_service
 from py.mute_service import mute_service
-from py.mute_controller import mute_user, unmute_user, check_all
+from py.mute_controller import mute_user, unmute_user, check_all, mute_suspend
 from py.parser import timeParser, get_time, extract_ticket_prefix
 from py.user_service import user_service
 from py.utils import check_authority, getUserGuildAuthority
@@ -36,6 +36,8 @@ from py.value import AUTH, ROLE
 # #############################################################################
 # 初始化程序代码
 # #############################################################################
+# 设置logging
+logging.basicConfig(level='INFO', format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
 
 # 设置程序的工作路径
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -44,15 +46,34 @@ logging.info(f"Current working directory is: {os.getcwd()}")
 with open('cfg/config.json', 'r', encoding='utf-8') as f:
     config = json.load(f)
 
-mute_observer = threading.Thread()
-
 # 全局变量定义
 # 初始化机器人
 bot = Bot(token=config['token'])
 
+# 多线程 --- 线程间通信变量
+mute_observer_run = threading.Event()
+
+mute_observer_thread = threading.Thread(
+    target=mute_suspend,
+    args=(bot, mute_observer_run),
+    daemon=True)
+bot.mute_thread = mute_observer_thread
+bot.event_run_mute = mute_observer_run
+
+@bot.on_startup
+async def initialize(b: Bot):
+    logging.info(f"Initializing bot...")
+    try:
+        b.event_run_mute.set()
+        b.mute_thread.start()
+        pass
+    except KeyError:
+        logging.warning(f"The bot have not registered mute thread.")
+
 
 @bot.on_shutdown
 async def destructor(b: Bot):
+    b.event_run_mute.clear()
     logging.info("Shutting down...")
     await user_service.store()
     logging.info("User data saved.")
@@ -60,6 +81,9 @@ async def destructor(b: Bot):
     logging.info("Guild data saved.")
     await mute_service.store()
     logging.info("Mute data saved.")
+    logging.info("Waiting mute thread join...")
+    b.mute_thread.join()
+
 
 # #############################################################################
 # 指令模块
@@ -164,7 +188,7 @@ async def mute(msg: Message, user_id: str, mute_time: str, reason: str):
 
     # Log
     logging.info(
-        'Authorized. begin mute process， muting' + user_id + ' in guild' + msg.ctx.guild.name + '(id is: ' + msg.ctx.guild.id + ')')
+        f"Authorized. Mute process started muting {user_id} in guild {msg.ctx.guild.name}(id:{msg.ctx.guild.id})")
 
     # 检查静音用户是否存在，并设置静音角色 （Tag）
     mute_role = await guild_service.get_role_by_tag(msg.ctx.guild.id, ROLE.MUTE)
@@ -367,9 +391,9 @@ async def onclick(b: Bot, event: Event):
 # #########################################################################################
 # 定时任务
 # #########################################################################################
-@bot.task.add_interval(minutes=1)
-async def check():
-    await check_all(bot)
+# @bot.task.add_interval(minutes=1)
+# async def check():
+#     await check_all(bot)
 
 
 # #########################################################################################
@@ -383,8 +407,7 @@ async def world(msg: Message):
 # #########################################################################################
 # 主程序入口
 # #########################################################################################
-if __name__ == "__main__":
-    logging.basicConfig(level='INFO', format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
-    bot.run()
+
+bot.run()
 
 # await channel.update_permission(user, allow=(2048 | 4096))
