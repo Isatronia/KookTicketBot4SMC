@@ -32,7 +32,7 @@ async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
     # 为用户设置禁言角色
     await mute_service.mute(msg.ctx.guild.id, user.id, mute_time)
     await msg.ctx.guild.grant_role(user, muted_roles[0])
-    await user.send('你因为 ' + reason + ' 已被禁言， 请私聊管理解禁。')
+    await user.send('你因为 ' + reason + ' 已被禁言，如有疑问请私聊管理。')
 
 
 async def unmute_user(msg: Message, user: User):

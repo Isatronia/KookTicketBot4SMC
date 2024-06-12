@@ -260,15 +260,15 @@ async def clean_user_data(msg: Message, user_id: str):
 async def rename(msg: Message, *args):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
-    name = ' '.join(args)
-    logging.info('rename channel id {:} as {:}'.format(msg.ctx.channel.id, name))
+    new_name = ' '.join(args)
+    logging.info('rename channel id {:} as {:}'.format(msg.ctx.channel.id, new_name))
     try:
         prefix = extract_ticket_prefix(msg.ctx.channel.name)
-        await msg.ctx.channel.update(name=f"{prefix} {name}")
-        await msg.reply('重命名成功=w=。', is_temp=True)
+        await msg.ctx.channel.update(name=f"{prefix} {new_name}")
+        await msg.reply(f'已将频道重命名为 {new_name}')
     except Exception as e:
         await msg.reply(str(e), is_temp=True)
-        await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
+        await msg.reply('出错啦，请联系开发者检查错误信息=w=', is_temp=True)
 
 
 @bot.command(name="assign", aliases=['as'])

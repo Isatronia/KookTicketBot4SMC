@@ -275,7 +275,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
         if ticket_role is not None:
             ticket_role = list(map(int, ticket_role))
     except ValueError:
-        logging.warning(f"Role id maybe integer. Param is :{ticket_role}")
+        logging.warning(f"Role id maybe not integer(Param is :{ticket_role}) getting role by tag...")
         ticket_role = await guild_service.get_role_by_tag(guild.id, ticket_role[0])
 
     # 自动更新对应服务器的数据
