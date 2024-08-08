@@ -23,6 +23,7 @@ from khl.card import CardMessage, Card, Module, Element, Types, Struct
 
 # import coded scripts.
 import py.ticket_controller as ticket_controller
+from py.cdk_controller import generate_cdk
 from py.guild_service import guild_service
 from py.mute_service import mute_service
 from py.mute_controller import mute_user, unmute_user, check_all, mute_suspend
@@ -37,7 +38,9 @@ from py.value import AUTH, ROLE
 # 初始化程序代码
 # #############################################################################
 # 设置logging
-logging.basicConfig(level='INFO', format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
+logging.basicConfig(level='INFO',
+                    format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)',
+                    )
 
 # 设置程序的工作路径
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -304,6 +307,11 @@ async def dice(msg: Message, mx: int):
     await msg.reply("骰子结果是：{:}".format(res))
     logging.info(str(msg.author.nickname) + '投了个骰子，结果是:' + str(res))
 
+
+@bot.command(name='generate')
+async def gen_cdk(msg: Message, *args):
+    command = ' '.join(args)
+    generate_cdk(msg, command)
 
 #############################################################################################
 # 事件处理模块

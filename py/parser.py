@@ -14,6 +14,7 @@
 import asyncio
 import re
 import time
+from typing import Union
 
 
 async def timeParser(time: str) -> int:
@@ -63,3 +64,12 @@ def extract_ticket_prefix(text: str = "") -> str:
         return f"ticket {ticket_id}"
     else:
         return ""
+
+
+def extract_cdk_command(text: str = "") -> Union[str, None]:
+    match = re.search(r'grant\s+(\w+)', text)
+    if match:
+        substring = match.group(1)
+        return substring
+    else:
+        return None

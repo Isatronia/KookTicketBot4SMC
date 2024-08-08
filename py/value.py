@@ -24,6 +24,7 @@ class PATH:
     MUTE_DATA = os.getcwd() + '/cfg/mute.json'
     MAN_DATA = os.getcwd() + '/README.md'
     MAN_PATH = os.getcwd() + '/cfg/man/'
+    CDK_PATH = os.getcwd() + '/cfg/cdk.json'
 
 # 角色标识
 class ROLE:
