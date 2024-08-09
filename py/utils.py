@@ -10,7 +10,10 @@
 '''
 import asyncio
 import heapq
+import logging
+import os
 import threading
+from logging.handlers import TimedRotatingFileHandler
 from typing import Union
 
 from khl import User, Guild, Message, Event
@@ -69,6 +72,14 @@ async def check_authority(msg: Message, level: int = 1) -> bool:
     await msg.reply('你没有权限使用这个命令。')
     return False
 
+async def has_role(msg: Message, role: str) -> bool:
+    if msg.author.id == master_id:
+        return True
+    roles = msg.ctx.guild.fetch_roles()
+    for r in roles:
+        if r.name == role and r.id in msg.author.roles:
+            return True
+    return False
 
 async def getUserGuildAuthority(user: Union[User, str], guild: Union[Guild, None] = None) -> int:
     # 局部引用，试试看
@@ -154,3 +165,6 @@ def CheckAuth(auth: int = 0):
         return wrapper
 
     return decorator_auth
+
+
+

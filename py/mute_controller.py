@@ -20,6 +20,7 @@ from .guild_service import guild_service
 from .mute_service import mute_service
 from .value import ROLE
 
+log = logging.getLogger(__name__)
 
 async def mute_user(msg: Message, user: User, mute_time: int, reason: str):
     # 为用户设置禁言角色并且私聊发送原因
@@ -53,7 +54,7 @@ async def unmute_user(msg: Message, user: User):
 
 
 async def check_all(bot: Bot):
-    logging.info('mute service started, timestamp is :' + str(time.time()))
+    log.info('mute service started, timestamp is :' + str(time.time()))
     records = await mute_service.check()
     for rec in records:
         user_id = rec['user_id']
@@ -65,8 +66,8 @@ async def check_all(bot: Bot):
             await mute_service.unmute(user_id, guild_id)
             await guild.revoke_role(user, roles[0])
         except Exception as e:
-            logging.error(e)
-            logging.error('unmute user failed, user_id is ' + str(user_id))
+            log.error(e)
+            log.error('unmute user failed, user_id is ' + str(user_id))
             continue
 
 async def unmute_user_from_guild(bot: Bot, user_id, guild_id):
@@ -76,15 +77,15 @@ async def unmute_user_from_guild(bot: Bot, user_id, guild_id):
         await mute_service.unmute(user_id, guild_id)
         await guild.revoke_role(user_id, mute_role[0])
     except Exception as e:
-        logging.error(e)
-        logging.error('unmute user failed, user_id is ' + str(user_id))
+        log.error(e)
+        log.error('unmute user failed, user_id is ' + str(user_id))
 
 
 def mute_suspend(bot: Bot, start_signal: threading.Event):
-    logging.info(f"Mute suspend thread loaded. Event status is {start_signal.is_set()}")
+    log.info(f"Mute suspend thread loaded. Event status is {start_signal.is_set()}")
     try:
         start_signal.wait()
-        logging.info(f"Mute service thread started.")
+        log.info(f"Mute service thread started.")
         while True and start_signal.is_set():
             next_time = mute_service.query_nearest_unmute_user()
             if next_time is not None and time.time() >= next_time[0]:
@@ -94,9 +95,9 @@ def mute_suspend(bot: Bot, start_signal: threading.Event):
                 try:
                     result = fea.result(timeout=30)
                 except TimeoutError:
-                    logging.warning(f"Unmute action time out, canceled.")
+                    log.warning(f"Unmute action time out, canceled.")
                     fea.cancel()
                 except BaseException as e:
-                    logging.error(e)
+                    log.error(e)
     except KeyboardInterrupt:
         return

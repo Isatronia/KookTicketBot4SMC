@@ -17,6 +17,7 @@ from khl.guild import ChannelCategory
 
 from .value import PATH
 
+log = logging.getLogger(__name__)
 
 async def gen_basic_manual(user: User):
     cm = CardMessage()
@@ -49,6 +50,6 @@ async def manual(msg: Message, txt: str):
                 cm.append(cd)
                 await msg.ctx.channel.send(cm)
         except FileNotFoundError as e:
-            logging.warning(f"Trying open manual file {txt} but not found.")
+            log.warning(f"Trying open manual file {txt} but not found.")
             return
     return

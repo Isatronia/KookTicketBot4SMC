@@ -37,6 +37,7 @@ from typing import Union
 from .utils import PriorityQueue
 from .value import PATH
 
+log = logging.getLogger(__name__)
 
 class MuteServiceImpl:
     _data: dict = None
@@ -58,7 +59,7 @@ class MuteServiceImpl:
                     with open(PATH.MUTE_DATA, 'r', encoding='utf-8') as f:
                         MuteServiceImpl._data = json.load(f)
             except FileNotFoundError:
-                logging.error(f"Mute Data file not found. Initializing...")
+                log.error(f"Mute Data file not found. Initializing...")
                 MuteServiceImpl._data = {}
 
     def _store(self):
@@ -100,7 +101,7 @@ class MuteServiceImpl:
             return False
         # 到时间了，解除禁言
         if time.time() >= self._get_data()[user_id][guild_id]:
-            logging.info('user mute times up:' + user_id)
+            log.info('user mute times up:' + user_id)
             # clean this Record
             return True
         return False
@@ -130,7 +131,7 @@ class MuteServiceImpl:
             if len(self._get_data()[user]) == 0:
                 del self._get_data()[user]
             await self.store()
-            logging.info('user unmuted:' + user)
+            log.info('user unmuted:' + user)
 
     async def queue_refresh(self):
         if self._get_data() is None:

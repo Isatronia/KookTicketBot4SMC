@@ -34,6 +34,8 @@ from .parser import get_time
 # bot.py过于冗长，拆分方法到这个文件
 # #############################################################################
 
+log = logging.getLogger(__name__)
+
 # 显示通用帮助手册
 async def gen_basic_manual(user: User):
     cm = CardMessage()
@@ -73,7 +75,7 @@ async def manual(msg: Message, txt: str):
 
 # 设置角色
 async def set_role(b: Bot, event: Event, tag: str, role: str):
-    logging.info('setting role...')
+    log.info('setting role...')
     # await guild_service.record_if_not_exist(event.body['guild_id'])
 
     # 获取频道id
@@ -93,7 +95,7 @@ async def set_role(b: Bot, event: Event, tag: str, role: str):
 
 
 async def remove_role(b: Bot, event: Event, tag: str, role: str):
-    logging.info('removing role tag...')
+    log.info('removing role tag...')
 
     # 获取频道id和服务器id
     cnl = await b.client.fetch_public_channel(event.body['target_id'])
@@ -147,7 +149,7 @@ async def assign_user(msg: Message):
     else:
         assigned += 1
     await user_service.try_set_user_key(msg.author.id, msg.ctx.guild.id, "assign", assigned)
-    logging.info(f"assign user {msg.author.nickname}(id:{msg.author.id}) task cnt: {assigned}")
+    log.info(f"assign user {msg.author.nickname}(id:{msg.author.id}) task cnt: {assigned}")
     return assigned
 
 
@@ -158,7 +160,7 @@ async def design_user(msg: Message):
     else:
         assigned = max(assigned - 1, 0)
     await user_service.try_set_user_key(msg.author.id, msg.ctx.guild.id, "assign", assigned)
-    logging.info(f"design user {msg.author.nickname}(id:{msg.author.id}) task cnt: {assigned}")
+    log.info(f"design user {msg.author.nickname}(id:{msg.author.id}) task cnt: {assigned}")
     return assigned
 
 
@@ -184,7 +186,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
         # 查询当前用户已经创建的Ticket数量
         ticket_cnt = await guild_service.apply_ticket(guild.id, event.body['user_id'])
 
-        logging.info(f"User {sender} is applying ticket at [{guild.name}] | ticket count:" + str(ticket_cnt))
+        log.info(f"User {sender} is applying ticket at [{guild.name}] | ticket count:" + str(ticket_cnt))
 
         # 如果开太多票会被禁止开票
         if ticket_cnt is None:
@@ -212,7 +214,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
 
             # 记得把申请额度还回去，否则会造成虚空开票的数据错误
             await user_service.close(event.body['user_id'], guild.id)
-            logging.error(e)
+            log.error(e)
             return None
 
         # 设置其他角色的权限
@@ -260,11 +262,11 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
             pass
         except Exception as e:
             pass
-        logging.info('ticket created.')
+        log.info('ticket created.')
         return cnl.id
         # End genTicket
 
-    logging.info(get_time() + 'creating ticket for roles: ' + str(ticket_role))
+    log.info(get_time() + 'creating ticket for roles: ' + str(ticket_role))
 
     # 获取对应服务器
     guild = await b.client.fetch_guild(event.body['guild_id'])
@@ -275,7 +277,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
         if ticket_role is not None:
             ticket_role = list(map(int, ticket_role))
     except ValueError:
-        logging.warning(f"Role id maybe not integer(Param is :{ticket_role}) getting role by tag...")
+        log.warning(f"Role id maybe not integer(Param is :{ticket_role}) getting role by tag...")
         ticket_role = await guild_service.get_role_by_tag(guild.id, ticket_role[0])
 
     # 自动更新对应服务器的数据
@@ -283,9 +285,9 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
         await guild_service.check_guild(guild.id)
         # target_role_id = await guild_service.get_role(guild.id, ticket_role)
     except Exception as e:
-        logging.warning(e)
+        log.warning(e)
 
-    logging.info('TicketBot: creating ticket at guild ' + guild.name)
+    log.info('TicketBot: creating ticket at guild ' + guild.name)
 
     # 取得全部分类，筛选出Ticket分类
     cate = await guild.fetch_channel_category_list()
@@ -311,7 +313,7 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
 
 # 关闭确认（预关闭）
 async def pre_close_ticket(b: Bot, event: Event, channel: str, user: str):
-    logging.info('pre close ticket...')
+    log.info('pre close ticket...')
     cnl = await b.client.fetch_public_channel(channel)
     await cnl.send(CardMessage(Card(
         Module.Header('Ticket 即将被关闭'),
@@ -325,7 +327,7 @@ async def pre_close_ticket(b: Bot, event: Event, channel: str, user: str):
 
 # 关闭
 async def close_ticket(b: Bot, event: Event, channel: str, user: str):
-    logging.info('closing ticket...')
+    log.info('closing ticket...')
     cnl = await b.client.fetch_public_channel(channel)
     # guild = b.client.fetch_guild(event.body['guild_id'])
 
@@ -343,7 +345,7 @@ async def close_ticket(b: Bot, event: Event, channel: str, user: str):
 
 # 重开
 async def reopen_ticket(b: Bot, event: Event, channel: str, user: str):
-    logging.info('reopening ticket...')
+    log.info('reopening ticket...')
     cnl = await b.client.fetch_public_channel(channel)
 
     await cnl.update_user_permission(await b.client.fetch_user(user), allow=(2048 | 4096))
@@ -359,7 +361,7 @@ async def reopen_ticket(b: Bot, event: Event, channel: str, user: str):
 
 # 删除
 async def delete_ticket(b: Bot, event: Event, channel: str):
-    logging.info('deleting ticket...')
+    log.info('deleting ticket...')
     cnl = await b.client.fetch_public_channel(channel)
     guild = await b.client.fetch_guild(event.body['guild_id'])
     await guild.delete_channel(cnl)

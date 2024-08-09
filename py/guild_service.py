@@ -29,8 +29,7 @@ data.json - GUILD DATA
 - channel 频道（暂时没用）
 '''
 
-LOG_HEADER = ' [guild_service.py] '
-
+log = logging.getLogger(__name__)
 
 class GuildServiceImpl:
     _data: dict = {}
@@ -51,7 +50,7 @@ class GuildServiceImpl:
                 GuildServiceImpl._data = json.load(f)
                 pass
         except FileNotFoundError:
-            logging.error(
+            log.error(
                 "Guild data file is not existed. Please check if it's not the first time running this program.")
             GuildServiceImpl._data = {}
 
@@ -60,7 +59,7 @@ class GuildServiceImpl:
             with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
         except Exception as e:
-            logging.error(str(e))
+            log.error(str(e))
     
     # 把数据保存到本地文件
     async def store(self) -> None:
@@ -109,7 +108,7 @@ class GuildServiceImpl:
             except KeyError:
                 return None
             if len(matching_ids) == 0:
-                logging.warning(f"Finding role {role_tag} in {guild_id} but not found. Return None.")
+                log.warning(f"Finding role {role_tag} in {guild_id} but not found. Return None.")
                 return None
                 # raise KeyError("Role Not Found")
             return matching_ids
@@ -173,8 +172,8 @@ class GuildServiceImpl:
                 self._get_data()[guild_id]['max'] = maxium_ticket
                 return True
             except KeyError as e:
-                logging.warning('Trying assign max ticket limit to an empty guild.')
-                logging.warning(f'[Args] guild_id: {guild_id}, maxium_ticket: {maxium_ticket}')
+                log.warning('Trying assign max ticket limit to an empty guild.')
+                log.warning(f'[Args] guild_id: {guild_id}, maxium_ticket: {maxium_ticket}')
                 return False
 
     # 从某个服务器申请服务单
@@ -256,7 +255,7 @@ guild_service = GuildServiceImpl()
 #             async with GuildService.__lock:
 #                 if GuildService.__instance is None:
 #                     GuildService.__instance = GuildServiceImpl()
-#         logging.info('Getted Instance: ' + str(GuildService.__instance))
+#         log.info('Getted Instance: ' + str(GuildService.__instance))
 #         return GuildService.__instance
 #
 #     def __new__(cls):

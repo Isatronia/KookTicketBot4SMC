@@ -25,7 +25,7 @@ user.json:
     }
 }
 '''
-
+log = logging.getLogger(__name__)
 
 class UserServiceImpl:
     _data: dict = {}
@@ -44,7 +44,7 @@ class UserServiceImpl:
             with open(PATH.USER_DATA, 'r', encoding='utf-8') as f:
                 UserServiceImpl._data = json.load(f)
         except FileNotFoundError:
-            logging.warning(
+            log.warning(
                 "User data file does not exists." +
                 " Please Check working directory if it's not the first time running this bot.")
             UserServiceImpl._data = {}
@@ -54,9 +54,9 @@ class UserServiceImpl:
             with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
                 json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
         except FileNotFoundError:
-            logging.error(f"Could not create file {PATH.USER_DATA}, please check env.")
+            log.error(f"Could not create file {PATH.USER_DATA}, please check env.")
         except BaseException as e:
-            logging.error(e)
+            log.error(e)
     
     async def get(self, key) -> Union[dict, None]:
         async with UserServiceImpl._rlock:
@@ -123,7 +123,7 @@ class UserServiceImpl:
         try:
             int(user_id)
         except TypeError:
-            logging.error("User Id must be number.")
+            log.error("User Id must be number.")
             return
         async with UserServiceImpl._wlock and UserServiceImpl._rlock:
             try:

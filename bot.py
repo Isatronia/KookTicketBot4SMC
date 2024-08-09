@@ -16,6 +16,7 @@ import random
 import signal
 import asyncio
 import threading
+from logging.handlers import TimedRotatingFileHandler
 
 # import khl.py
 from khl import Bot, Message, Event, EventTypes
@@ -23,7 +24,7 @@ from khl.card import CardMessage, Card, Module, Element, Types, Struct
 
 # import coded scripts.
 import py.ticket_controller as ticket_controller
-from py.cdk_controller import generate_cdk
+from py.cdk_controller import generate_cdk, activate_cdk
 from py.guild_service import guild_service
 from py.mute_service import mute_service
 from py.mute_controller import mute_user, unmute_user, check_all, mute_suspend
@@ -38,9 +39,19 @@ from py.value import AUTH, ROLE
 # 初始化程序代码
 # #############################################################################
 # 设置logging
-logging.basicConfig(level='INFO',
-                    format='[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)',
-                    )
+logger = logging.getLogger()
+log_handler = TimedRotatingFileHandler(
+    filename=os.getcwd() + '/log/bot.log',  # Base filename
+    when='midnight',  # Split logs at midnight
+    interval=1,  # Interval of 1 day
+    backupCount=7  # Keep the last 7 log files
+)
+formatter = logging.Formatter('[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
+log_handler.setFormatter(formatter)
+logger.setLevel(logging.INFO)
+logger.addHandler(log_handler)
+
+log = logging.getLogger(__name__)
 
 # 设置程序的工作路径
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -63,28 +74,29 @@ mute_observer_thread = threading.Thread(
 bot.mute_thread = mute_observer_thread
 bot.event_run_mute = mute_observer_run
 
+
 @bot.on_startup
 async def initialize(b: Bot):
-    logging.info(f"Initializing bot...")
+    log.info(f"Initializing bot...")
     try:
         b.event_run_mute.set()
         b.mute_thread.start()
         pass
     except KeyError:
-        logging.warning(f"The bot have not registered mute thread.")
+        log.warning(f"The bot have not registered mute thread.")
 
 
 @bot.on_shutdown
 async def destructor(b: Bot):
     b.event_run_mute.clear()
-    logging.info("Shutting down...")
+    log.info("Shutting down...")
     await user_service.store()
-    logging.info("User data saved.")
+    log.info("User data saved.")
     await guild_service.store()
-    logging.info("Guild data saved.")
+    log.info("Guild data saved.")
     await mute_service.store()
-    logging.info("Mute data saved.")
-    logging.info("Waiting mute thread join...")
+    log.info("Mute data saved.")
+    log.info("Waiting mute thread join...")
     b.mute_thread.join()
 
 
@@ -106,7 +118,7 @@ async def set_role(msg: Message, rolename: str, role_id: int = None):
         return
     if role_id is not None:
         pass
-    logging.info('setting role: ' + rolename + 'at guild ' + msg.ctx.guild.name + ' guild id is: ' + msg.ctx.guild.id)
+    log.info('setting role: ' + rolename + 'at guild ' + msg.ctx.guild.name + ' guild id is: ' + msg.ctx.guild.id)
     roles = await msg.ctx.guild.fetch_roles()
     cm = CardMessage()
     cd = Card(Module.Header('选择' + rolename + '角色'))
@@ -123,7 +135,7 @@ async def set_role(msg: Message, rolename: str, role_id: int = None):
 async def del_role(msg: Message, rolename: str):
     if not await check_authority(msg, AUTH.ADMIN):
         return
-    logging.info(f"deleting role: {rolename} at guild {msg.ctx.guild.name} witch id is: {msg.ctx.guild.id}")
+    log.info(f"deleting role: {rolename} at guild {msg.ctx.guild.name} witch id is: {msg.ctx.guild.id}")
     roles = await msg.ctx.guild.fetch_roles()
     cm = CardMessage()
     cd = Card(Module.Header(f'选择角色删除它们的"{rolename}"tag'))
@@ -141,7 +153,7 @@ async def del_role(msg: Message, rolename: str):
 async def list_role(msg: Message):
     if not await check_authority(msg, AUTH.ADMIN):
         return
-    logging.info('listting role...')
+    log.info('listting role...')
     roles = await guild_service.get_roles(msg.ctx.guild.id)
     cm = CardMessage()
     if roles is None:
@@ -179,18 +191,18 @@ async def list_role(msg: Message):
 @bot.command(name='mute')
 async def mute(msg: Message, user_id: str, mute_time: str, reason: str):
     # Log
-    logging.info('trying mute: ' + user_id + ' ' + mute_time + ' for ' + reason)
+    log.info('trying mute: ' + user_id + ' ' + mute_time + ' for ' + reason)
 
     # 获取用户对象
     user_obj = await bot.client.fetch_user(user_id)
 
     # 鉴权
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
-        logging.info(get_time() + 'Unauthorized, mute action rejected.')
+        log.info(get_time() + 'Unauthorized, mute action rejected.')
         return
 
     # Log
-    logging.info(
+    log.info(
         f"Authorized. Mute process started muting {user_id} in guild {msg.ctx.guild.name}(id:{msg.ctx.guild.id})")
 
     # 检查静音用户是否存在，并设置静音角色 （Tag）
@@ -198,7 +210,7 @@ async def mute(msg: Message, user_id: str, mute_time: str, reason: str):
 
     # 错误检测，没有设置静音角色（Tag）
     if mute_role is None:
-        logging.warning(get_time() + 'mute role not found. cur data is : + \n' + str(guild_service._data))
+        log.warning(get_time() + 'mute role not found. cur data is : + \n' + str(guild_service._data))
         await msg.ctx.channel.send(CardMessage(Card(
             Module.Header('Error occurred'),
             Module.Section('还没有设置Mute角色啊 kora!!')
@@ -207,14 +219,14 @@ async def mute(msg: Message, user_id: str, mute_time: str, reason: str):
 
     try:
         mute_time = await timeParser(mute_time)
-        logging.info(get_time() + 'mute time resolved: ' + str(mute_time))
+        log.info(get_time() + 'mute time resolved: ' + str(mute_time))
         # 实现禁言
         await mute_user(msg, user_obj, mute_time, reason)
     except Exception as e:
-        logging.info(str(e))
+        log.info(str(e))
         # await msg.reply(str(e), is_temp=True)
         await msg.reply('出错啦，请联系管理员检查错误信息=w=', is_temp=True)
-    logging.info(get_time() + f"succeed muted {user_id} {mute_time} for {reason}")
+    log.info(get_time() + f"succeed muted {user_id} {mute_time} for {reason}")
 
 
 # 取消静音用户（移除静音角色）
@@ -225,7 +237,7 @@ async def unmute(msg: Message, userid: str):
         return
 
     # log
-    logging.info('unmute user ' + userid + ' at ' + msg.ctx.guild.name + '(id is {:} )'.format(msg.ctx.guild.id))
+    log.info('unmute user ' + userid + ' at ' + msg.ctx.guild.name + '(id is {:} )'.format(msg.ctx.guild.id))
 
     # 获取用户
     user = await bot.client.fetch_user(userid)
@@ -233,7 +245,7 @@ async def unmute(msg: Message, userid: str):
     try:
         await unmute_user(msg, user)
     except Exception as e:
-        logging.error(str(e))
+        log.error(str(e))
         await msg.reply(str(e), is_temp=True)
         await msg.reply('出错啦，请检查错误信息=w=', is_temp=True)
 
@@ -253,7 +265,7 @@ async def man(msg: Message, cmd: str = ''):
 async def clean_user_data(msg: Message, user_id: str):
     if not await check_authority(msg, AUTH.ADMIN):
         return
-    logging.info('cleaning user data: {:} at {:}(id is: {:})'.format(user_id, msg.ctx.guild.name, msg.ctx.guild.id))
+    log.info('cleaning user data: {:} at {:}(id is: {:})'.format(user_id, msg.ctx.guild.name, msg.ctx.guild.id))
     await user_service.reset(user_id, msg.ctx.guild.id)
     await msg.reply('已清除用户' + user_id + '的数据。', is_temp=True)
 
@@ -264,7 +276,7 @@ async def rename(msg: Message, *args):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
         return
     new_name = ' '.join(args)
-    logging.info('rename channel id {:} as {:}'.format(msg.ctx.channel.id, new_name))
+    log.info('rename channel id {:} as {:}'.format(msg.ctx.channel.id, new_name))
     try:
         prefix = extract_ticket_prefix(msg.ctx.channel.name)
         await msg.ctx.channel.update(name=f"{prefix} {new_name}")
@@ -305,13 +317,21 @@ async def get_user_key(msg: Message, key, user=None):
 async def dice(msg: Message, mx: int):
     res = random.randint(1, mx)
     await msg.reply("骰子结果是：{:}".format(res))
-    logging.info(str(msg.author.nickname) + '投了个骰子，结果是:' + str(res))
+    log.info(str(msg.author.nickname) + '投了个骰子，结果是:' + str(res))
 
 
-@bot.command(name='generate')
+@bot.command(name='generate', aliases=['cdk'])
 async def gen_cdk(msg: Message, *args):
+    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
+        return
     command = ' '.join(args)
-    generate_cdk(msg, command)
+    await generate_cdk(msg, command)
+    return
+
+@bot.command(name='activate', aliases=['act'])
+async def act_cdk(msg: Message, cdk: str):
+    await activate_cdk(msg, cdk)
+
 
 #############################################################################################
 # 事件处理模块
@@ -327,7 +347,7 @@ async def onclick(b: Bot, event: Event):
             return False
         return True
 
-    logging.info(get_time() + 'event received... body is:\n' + str(event.body))
+    log.info(get_time() + 'event received... body is:\n' + str(event.body))
 
     if event.body['value'].startswith('create_ticket_'):
         # check if role exists
@@ -360,7 +380,7 @@ async def onclick(b: Bot, event: Event):
     if event.body['value'].startswith('deleteTicket_'):
 
         # 记录日志并鉴权
-        logging.info('delete ticket invoked')
+        log.info('delete ticket invoked')
         if not await check_auth(user_authority, AUTH.STAFF):
             return
 
@@ -372,7 +392,7 @@ async def onclick(b: Bot, event: Event):
 
     # 重开Ticket
     elif event.body['value'].startswith('reopenTicket_'):
-        logging.info('reopen ticket invoked')
+        log.info('reopen ticket invoked')
         if not await check_auth(user_authority, AUTH.STAFF):
             return
         args = event.body['value'].split('_')
@@ -409,6 +429,7 @@ async def onclick(b: Bot, event: Event):
 # #########################################################################################
 @bot.command(name='hello')
 async def world(msg: Message):
+    roles = await msg.ctx.guild.fetch_roles()
     await msg.reply("world")
 
 
