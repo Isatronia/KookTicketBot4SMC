@@ -324,8 +324,13 @@ async def dice(msg: Message, mx: int):
 async def gen_cdk(msg: Message, *args):
     if not await check_authority(msg, AUTH.ADMIN):
         return
-    command = ' '.join(args)
-    await generate_cdk(msg, command)
+    count = 1
+    if args[0] == '-n':
+        command = ' '.join(args[2:])
+        count = int(args[1])
+    else:
+        command = ' '.join(args)
+    await generate_cdk(msg, command, count=count)
     return
 
 
