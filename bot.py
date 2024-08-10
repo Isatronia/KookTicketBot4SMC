@@ -30,7 +30,7 @@ from py.mute_service import mute_service
 from py.mute_controller import mute_user, unmute_user, check_all, mute_suspend
 from py.parser import timeParser, get_time, extract_ticket_prefix
 from py.user_service import user_service
-from py.utils import check_authority, getUserGuildAuthority
+from py.utils import check_authority, getUserGuildAuthority, has_role
 from py.value import AUTH, ROLE
 
 # from py.manual_controller import manual
@@ -44,7 +44,7 @@ log_handler = TimedRotatingFileHandler(
     filename=os.getcwd() + '/log/bot.log',  # Base filename
     when='midnight',  # Split logs at midnight
     interval=1,  # Interval of 1 day
-    backupCount=7  # Keep the last 7 log files
+    backupCount=30  # Keep the last 30 log files
 )
 formatter = logging.Formatter('[%(asctime)s] [%(levelname)s]: %(message)s (%(filename)s:%(lineno)d)')
 log_handler.setFormatter(formatter)
@@ -328,6 +328,7 @@ async def gen_cdk(msg: Message, *args):
     await generate_cdk(msg, command)
     return
 
+
 @bot.command(name='activate', aliases=['act'])
 async def act_cdk(msg: Message, cdk: str):
     await activate_cdk(msg, cdk)
@@ -350,6 +351,18 @@ async def onclick(b: Bot, event: Event):
     log.info(get_time() + 'event received... body is:\n' + str(event.body))
 
     if event.body['value'].startswith('create_ticket_'):
+        # 这是新的需求，开票只能由白名单玩家进行
+        try:
+            authrized_role = config["create_ticket_role"]
+            if not await has_role(b=b, event=event, role=config['create_ticket_role']):
+                channel = await b.client.fetch_public_channel(event.body['target_id'])
+                await channel.send("您没有权限进行此操作", temp_target_id=event.body['user_id'])
+                return
+        except KeyError as e:
+            log.warning(
+                f"Create Ticket's Role white list is not set, to set the role,"
+                f" open config and set 'create_ticket_role' field.")
+
         # check if role exists
         args = event.body['value'].split('_')
         # 后续参数代表对应角色

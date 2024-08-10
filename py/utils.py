@@ -16,7 +16,7 @@ import threading
 from logging.handlers import TimedRotatingFileHandler
 from typing import Union
 
-from khl import User, Guild, Message, Event
+from khl import User, Guild, Message, Event, Bot
 
 from .value import ROLE, AUTH
 
@@ -72,14 +72,36 @@ async def check_authority(msg: Message, level: int = 1) -> bool:
     await msg.reply('你没有权限使用这个命令。')
     return False
 
-async def has_role(msg: Message, role: str) -> bool:
-    if msg.author.id == master_id:
-        return True
-    roles = msg.ctx.guild.fetch_roles()
-    for r in roles:
-        if r.name == role and r.id in msg.author.roles:
+
+async def has_role(role: str = None, msg: Message = None, event: Event = None, b: Bot = None) -> bool:
+    # 先检测角色是否为空，为空直接返回
+    if role is None:
+        return False
+
+    # msg模式，通过msg确定用户和角色
+    if msg is not None:
+        if msg.author.id == master_id:
             return True
-    return False
+        roles = msg.ctx.guild.fetch_roles()
+        for r in roles:
+            if r.name == role and r.id in msg.author.roles:
+                return True
+        return False
+
+    # 事件模式，通过事件获取用户和角色
+    elif event is not None and b is not None:
+        user_id = event.body['user_id']
+        if user_id == master_id:
+            return True
+        guild = await b.client.fetch_guild(event.body['guild_id'])
+        roles = await guild.fetch_roles()
+        user = await guild.fetch_user(user_id)
+        for r in roles:
+            if r.name == role and r.id in user.roles:
+                return True
+        return False
+        # roles = event.body.
+
 
 async def getUserGuildAuthority(user: Union[User, str], guild: Union[Guild, None] = None) -> int:
     # 局部引用，试试看
@@ -165,6 +187,3 @@ def CheckAuth(auth: int = 0):
         return wrapper
 
     return decorator_auth
-
-
-
