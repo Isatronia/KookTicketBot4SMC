@@ -322,7 +322,7 @@ async def dice(msg: Message, mx: int):
 
 @bot.command(name='generate', aliases=['cdk'])
 async def gen_cdk(msg: Message, *args):
-    if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
+    if not await check_authority(msg, AUTH.ADMIN):
         return
     command = ' '.join(args)
     await generate_cdk(msg, command)
