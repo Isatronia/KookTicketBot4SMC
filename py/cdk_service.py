@@ -13,12 +13,15 @@
 
 --------------------------------------
 '''
+import time
 import uuid
 from typing import Union
 
-from .value import PATH
+from .value import PATH, config
+from .utils import get_formatted_date
 from .parser import extract_cdk_command
 from .guild_service import guild_service
+from .user_service import user_service
 
 import json
 import logging
@@ -38,6 +41,14 @@ cdk.json - 记录cdk和激活历史
 '''
 
 log = logging.getLogger(__name__)
+
+
+class ActivateTooFastError(Exception):
+    def __init__(self, info: str = None):
+        super().__init__(info)
+        pass
+
+    pass
 
 
 class Actions:
@@ -97,21 +108,40 @@ class CdkServiceImpl:
                 self._get_data()[cdk] = {"command": cmd,
                                          "activated": None,
                                          "created": {"id": str(msg.author.id),
-                                                     "name": str(msg.author.nickname)}
+                                                     "name": str(msg.author.nickname),
+                                                     "time": get_formatted_date()}
                                          }
                 self._store()
             return cdk
 
-    async def activate_cdk(self, cdk, msg: Message) -> bool:
+    # CDK激活时间间隔检查
+    async def cdk_activate_check(self, msg: Message):
+        epoch = config["activate_gap"] if config["activate_gap"] is not None else 3600
+        last_activate_time = await user_service.try_get_user_key(msg.author.id, msg.ctx.guild.id, "last_activate")
+        try:
+            if time.time() - last_activate_time <= epoch:
+                raise ActivateTooFastError
+        except TypeError:
+            pass
+        await user_service.try_set_user_key(msg.author.id, msg.ctx.guild.id, "last_activate", time.time())
+        return
+
+    # 尝试激活CDK
+    async def try_activate_cdk(self, cdk, msg: Message) -> bool:
+        # 检查自上次激活的时间间隔是否满足要求
+        await self.cdk_activate_check(msg)
+        # 检查是否已经被使用
         if cdk not in self._get_data() or self._get_data()[cdk]["activated"] is not None:
             return False
+        # 执行激活代码
         async with CdkServiceImpl._flock:
             command = self._get_data()[cdk]['command'].split(' ')
             try:
                 method = getattr(CdkServiceImpl._actions, command[0])
                 await method(msg, *command[1:])
                 CdkServiceImpl._data[cdk]["activated"] = {"id": str(msg.author.id),
-                                                          "name": str(msg.author.nickname)}
+                                                          "name": str(msg.author.nickname),
+                                                          "time": get_formatted_date()}
                 self._store()
             except BaseException as e:
                 log.error(e)

@@ -44,6 +44,16 @@
 
 骰一个骰子，n是骰子的面数
 
+- `generate [-n (optional) numbers to generate] [bot commands]`
+
+生成CDK,用户使用配套的 `activate` 指令可以使用CDK生成时指定的指令。
+注意，在CDK由机器人生成后会自动回复， 此CDK仅展示给发送指令的人，并在离开频道时消失，请及时保存。
+此外，CDK格式为UUID。
+
+- `activate [CDK]`
+
+使用这条指令来激活一条CDK。
+
 ## 2 部署指南
 
 ### 2.1 环境准备：
@@ -84,11 +94,15 @@ pip3 install khl.py
 .
 ├── cfg  
 │    ├── man                        | 放置各种手册文件，用于/man指令调用。  
-│    │   └─ manual.txt  
+│    │   └─ manual.txt              | 默认的帮助文件，请您在部署机器人时自行创建。
 │    ├── config.json                | 各种配置文件, 包含机器人的Token等  
 │    ├── data.json                  | 这里存储了各个服务器的数据，主要是角色和权限配置。  
-│    ├── mute.json                  | 这里存储了被禁言用户的数据。  
-│    └── user.json                  | 存储了某个用户在某个服务器累计开出多少张Ticket。  
+│    ├── mute.json                  | 这里存储了被禁言用户的数据。
+│    ├── cdk.json                   | 这里放着已经申请的所有CDK。
+│    └── user.json                  | 存储了某个用户在某个服务器累计开出多少张Ticket。
+│     
+├── log                             | 存放日志文件的目录。
+│     
 ├── py  
 │    ├── guild_service.py  
 │    ├── manual_controller.py

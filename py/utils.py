@@ -9,6 +9,7 @@
 2024/4/25 20:02   ishgrina   1.0         None
 '''
 import asyncio
+from datetime import datetime
 import heapq
 import logging
 import os
@@ -56,6 +57,13 @@ class PriorityQueue:
     def __str__(self):
         return str(self._heap)
 
+
+# #############################################################################
+# 功能函数模块
+# #############################################################################
+
+def get_formatted_date() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 # #############################################################################
 # 鉴权模块

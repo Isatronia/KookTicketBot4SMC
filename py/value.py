@@ -8,14 +8,16 @@
 ------------      -------    --------    -----------
 2022/7/17 9:58   ishgrina   1.0         None
 '''
-
+import json
 # import lib
 import os
+
 
 # 角色基础权限控制
 class AUTH:
     STAFF = 0x00000001
     ADMIN = 0x7fffffff
+
 
 # 配置文件路径
 class PATH:
@@ -26,9 +28,36 @@ class PATH:
     MAN_PATH = os.getcwd() + '/cfg/man/'
     CDK_PATH = os.getcwd() + '/cfg/cdk.json'
 
+
 # 角色标识
 class ROLE:
     MUTE = 'mute'
     STAFF = 'staff'
 
 
+class __CONFIG:
+    def __init__(self):
+        self.__dict = {}
+        with open(os.getcwd() + '/cfg/config.json', encoding='utf8') as f:
+            self.__dict = json.load(f)
+
+    def __getitem__(self, item):
+        return self.get_config(item)
+
+    def __setitem__(self, key, value):
+        return
+
+    # 配置文件只允许读取字符
+    def get_config(self, key: str = None):
+        if key is None:
+            return None
+        if not isinstance(key, str):
+            return None
+        else:
+            try:
+                return self.__dict[key]
+            except KeyError:
+                return None
+
+
+config = __CONFIG()

@@ -31,7 +31,7 @@ from py.mute_controller import mute_user, unmute_user, check_all, mute_suspend
 from py.parser import timeParser, get_time, extract_ticket_prefix
 from py.user_service import user_service
 from py.utils import check_authority, getUserGuildAuthority, has_role
-from py.value import AUTH, ROLE
+from py.value import AUTH, ROLE, config
 
 # from py.manual_controller import manual
 
@@ -57,8 +57,8 @@ log = logging.getLogger(__name__)
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 logging.info(f"Current working directory is: {os.getcwd()}")
 # 加载配置文件
-with open('cfg/config.json', 'r', encoding='utf-8') as f:
-    config = json.load(f)
+# with open('cfg/config.json', 'r', encoding='utf-8') as f:
+#     config = json.load(f)
 
 # 全局变量定义
 # 初始化机器人

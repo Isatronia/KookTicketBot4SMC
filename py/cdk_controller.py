@@ -16,7 +16,7 @@
 from khl import Message
 
 from .guild_service import guild_service
-from .cdk_service import cdk_service
+from .cdk_service import cdk_service, ActivateTooFastError
 from .value import PATH
 
 async def generate_cdk(msg: Message, command: str, count: int = 1):
@@ -34,8 +34,11 @@ async def generate_cdk(msg: Message, command: str, count: int = 1):
     await msg.reply(f"CDK生成成功, 请保留此Key备用:\n---\n{cdks}", is_temp=True)
 
 async def activate_cdk(msg: Message, cdk: str):
-    res = await cdk_service.activate_cdk(cdk, msg)
-    if res:
-        await msg.reply("CDK使用成功")
-    else:
-        await msg.reply("出问题了，请检查您输入的内容")
+    try:
+        res = await cdk_service.try_activate_cdk(cdk, msg)
+        if res:
+            await msg.reply("CDK使用成功")
+        else:
+            await msg.reply("出问题了，请检查您输入的内容")
+    except ActivateTooFastError as e:
+        await msg.reply("申请太频繁了，请稍后再试。")
