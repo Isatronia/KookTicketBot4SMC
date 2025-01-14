@@ -116,4 +116,29 @@ pip3 install khl.py
 ├── bot.py                          | 机器人的核心程序代码
 └── startbot.bat                    | 运行该文件启动机器人，请使用对应操作系统的启动文件。 
 ```
+
+---
+
+# 附录 Config文件的内容
+
+简体中文：
+```json
+{
+  "token": "你的机器人的Token",  
+  "activate_gap":"激活CDK的冷却时间",
+  "create_ticket_role": "[这是可选项]填一个服务器中的角色，有这个角色的人才能开票。",
+  "new_ticket": "新开的票会自动发送这里的消息。"
+}
+```
+
+英文：
+```json
+{
+  "token": "Your bot's token",  
+  "activate_gap":"User's CDK activate time gap",
+  "create_ticket_role": "If defined, only users has this role can create ticket",
+  "new_ticket": "Message will automatically send when ticket is created"
+}
+```
+
  
