@@ -124,22 +124,14 @@ pip3 install khl.py
 简体中文：
 ```json
 {
-  "token": "你的机器人的Token",  
-  "activate_gap":"[这是可选项]激活CDK的冷却时间（单位：秒）， 默认3600秒",
-  "create_ticket_role": "[这是可选项]填一个服务器中的角色，有这个角色的人才能开票。",
-  "new_ticket": "[这是可选项]新开的票会自动发送这里的消息。",
-  "default_ticket_number": "[这是可选项]每个人最大开票数量，默认为2"
+  "token": "你的机器人的Token"
 }
 ```
 
 英文：
 ```json
 {
-  "token": "Your bot's token",  
-  "activate_gap":"[Opt]User's CDK activate time gap (seconds), default 3600s",
-  "create_ticket_role": "[Opt]If defined, only users has this role can create ticket",
-  "new_ticket": "[Opt]Message will automatically send when ticket is created",
-  "default_ticket_number": "[Opt]Maximum tickets could be applied per user, default 2"
+  "token": "Your bot's token"
 }
 ```
 
