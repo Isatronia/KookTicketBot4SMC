@@ -16,7 +16,7 @@ from typing import Union
 import logging
 
 from .user_service import user_service
-from .value import PATH
+from .value import PATH, config
 
 '''
 data.json - GUILD DATA
@@ -27,9 +27,11 @@ data.json - GUILD DATA
     - name
     - permission
 - channel 频道（暂时没用）
+- create_ticket 哪个角色可以创建 Ticket
 '''
 
 log = logging.getLogger(__name__)
+
 
 class GuildServiceImpl:
     _data: dict = {}
@@ -40,7 +42,7 @@ class GuildServiceImpl:
     # 初始化GuildService
     def __init__(self):
         self._load()
-    
+
     def _get_data(self):
         return GuildServiceImpl._data
 
@@ -60,7 +62,7 @@ class GuildServiceImpl:
                 json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
         except Exception as e:
             log.error(str(e))
-    
+
     # 把数据保存到本地文件
     async def store(self) -> None:
         async with self._flock:
@@ -79,7 +81,12 @@ class GuildServiceImpl:
         if guild_id not in self._get_data():
             async with self.init_lock:
                 if guild_id not in self._get_data():
-                    self._get_data()[guild_id] = {'cnt': 1, 'role': {}, 'channel': {}}
+                    self._get_data()[guild_id] = {
+                        'cnt': 1,       # 初始Ticket计数为1
+                        'role': {},     # 服务器角色列表
+                        'channel': {},  # 暂无作用
+                        'config': {}    # 服务器配置项
+                    }
                     await self.store()
 
     # 检查服务器是否在机器人的数据库中注册,如果没有就注册。
@@ -91,11 +98,67 @@ class GuildServiceImpl:
         return
 
     # 获取服务器信息
-    async def get(self, guild_id) -> dict:
+    async def get(self, guild_id: int) -> dict:
         return self._get_data()[guild_id]
 
-    # 根据角色名获取 已注册在机器人数据库中的 服务器的角色信息
-    async def get_role_by_tag(self, guild_id, role_tag) -> Union[list, None]:
+    # 设置服务器配置
+    async def set_guild_config(self, guild_id: int, key: str, value: str) -> Union[bool, None]:
+        try:
+            log.info(f'setting config [ {key} : {value} ] in guild {guild_id}..')
+            if self._data[guild_id] is None:
+                await self.init_guild(guild_id)
+            async with self.action_lock:
+                if 'config' not in self._data[guild_id]:
+                    self._data[guild_id]['config'] = {key: value}
+                else:
+                    self._data[guild_id]['config'][key] = value
+                await self.store()
+            return True
+        except KeyError:
+            log.warning(f"An error occurred setting config in guild {guild_id}. config is: {key} : {value}")
+            return None
+
+    # 清除服务器配置
+    async def clear_guild_config(self, guild_id: int) -> Union[bool, None]:
+        try:
+            async with self.action_lock:
+                self._data[guild_id]['config'] = {}
+                await self.store()
+                return True
+        except KeyError:
+            log.warning(f'Clear guild config failed, guild id is: {guild_id}')
+        return None
+
+    async def clear_guild_config_by_key(self, guild_id: int, key: str) -> Union[bool, None]:
+        async with self.action_lock:
+            try:
+                log.info(f'Deleting config[{key}] in guild[{guild_id}]')
+                del self._data[guild_id]['config'][key]
+                await self.store()
+                return True
+            except KeyError:
+                log.info(f'Key not exists, return.')
+            return None
+
+
+    async def get_guild_config(self, guild_id: int, key: str) -> Union[str, None]:
+        try:
+            log.info(f'Getting config {key} in guild {guild_id}')
+            return self._data[guild_id]['config'][key]
+        except KeyError:
+            log.warning(f'Config not found.')
+        return None
+
+    async def list_guild_config(self, guild_id: int) -> Union[str, None]:
+        try:
+            log.info(f"Listing guild[{guild_id}] config")
+            async with self.action_lock:
+                return json.dumps(self._data[guild_id]['config'], indent=4)
+        except KeyError:
+            log.warning(f'Guild{guild_id} or its config not exist.')
+
+    # 根据角色名,获取已注册在机器人数据库中的服务器的角色信息
+    async def get_role_by_tag(self, guild_id: int, role_tag: str) -> Union[list, None]:
         await self.load()
         async with self.action_lock:
             matching_ids = []
@@ -176,17 +239,19 @@ class GuildServiceImpl:
                 log.warning(f'[Args] guild_id: {guild_id}, maxium_ticket: {maxium_ticket}')
                 return False
 
-    # 从某个服务器申请服务单
+    # 申请Ticket前进行的数量检查，测试是否超出单人申请上限
     async def apply_ticket(self, guild_id, user_id) -> Union[int, None]:
         async with self.action_lock:
+            # 检查是否达到单人开票数量最大张数，如果达到了就不开。
             user_guild_cnt = await user_service.get_guild_cnt(user_id, guild_id)
 
-            # 检查是否达到单人开票数量最大张数，如果达到了就不开。
             # 如果未设置最大开票张数，默认为2
             if 'max' not in self._get_data()[guild_id]:
-                self._get_data()[guild_id]['max'] = 2
+                temp_ticket_max_count = 2
+                self._get_data()[guild_id]['max'] = 2 if config['default_ticket_number'] is None else config[
+                    'default_ticket_number']
 
-            # 如果超出单人开票张数限制
+                # 如果超出单人开票张数限制
             if self._get_data()[guild_id]['max'] <= user_guild_cnt:
                 return None
 
@@ -226,47 +291,3 @@ class GuildServiceImpl:
 
 # py是天生的单例模式
 guild_service = GuildServiceImpl()
-
-# # 检查指定服务器是否有效
-# async def record_if_not_exist(self, guild_id):
-#     async with self.action_lock:
-#         if guild_id not in self.data:
-#             await self.init_guild(guild_id)
-#         return
-
-# async def get_staff(self, guild_id) -> Union[int, None]:
-#     return await self.get_role(guild_id, 'staff')
-#
-# async def get_mute(self, guild_id) -> Union[str, None]:
-#     return await self.get_role(guild_id, 'mute')
-#
-# async def set_staff(self, guild_id, role_id):
-#     await self.set_role(guild_id, 'role', role_id)
-
-
-# # 单例模式， 保证只有一个id_dict实例
-# class GuildService:
-#     __instance: GuildServiceImpl = None
-#     __lock = Lock()
-#
-#     @staticmethod
-#     async def get_instance():
-#         if GuildService.__instance is None:
-#             async with GuildService.__lock:
-#                 if GuildService.__instance is None:
-#                     GuildService.__instance = GuildServiceImpl()
-#         log.info('Getted Instance: ' + str(GuildService.__instance))
-#         return GuildService.__instance
-#
-#     def __new__(cls):
-#         if cls.__instance is None:
-#             with cls.__lock:
-#                 if cls.__instance is None:
-#                     cls.__instance = GuildServiceImpl()
-#         return cls.__instance
-#
-#     def __getitem__(self, key):
-#         return self.__instance[key]
-#
-#     def __setitem__(self, key, value):
-#         self.__instance[key] = value

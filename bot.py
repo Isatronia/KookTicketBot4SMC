@@ -76,7 +76,7 @@ bot.event_run_mute = mute_observer_run
 
 
 @bot.on_startup
-async def initialize(b: Bot):
+async def startup(b: Bot):
     log.info(f"Initializing bot...")
     try:
         b.event_run_mute.set()
@@ -87,7 +87,7 @@ async def initialize(b: Bot):
 
 
 @bot.on_shutdown
-async def destructor(b: Bot):
+async def shutdown(b: Bot):
     b.event_run_mute.clear()
     log.info("Shutting down...")
     await user_service.store()
@@ -286,6 +286,37 @@ async def rename(msg: Message, *args):
         await msg.reply('出错啦，请联系开发者检查错误信息=w=', is_temp=True)
 
 
+@bot.command(name="setKey", aliases=['sk', 'config', 'cfg'])
+async def force_set_key(msg: Message, *args):
+    if not await check_authority(msg, AUTH.ADMIN):
+        return
+    sz = ' '.join(args)
+    cmd_list = [s.strip() for s in sz.split(':')[:2]]
+    if await guild_service.set_guild_config(msg.ctx.guild.id, *cmd_list) is not None:
+        await msg.reply('操作成功')
+    else:
+        await msg.reply('操作出错，请联系管理员')
+
+
+@bot.command(name="listKey", aliases=['showConfig'])
+async def list_guild_keys(msg: Message):
+    if not await check_authority(msg, AUTH.ADMIN):
+        return
+    txt = await guild_service.list_guild_config(msg.ctx.guild.id)
+    await msg.ctx.channel.send(f'```json\n{txt}```')
+
+
+@bot.command(name="removeKey", aliases=['rk'])
+async def remove_guild_keys(msg: Message, *args):
+    if not await check_authority(msg, AUTH.ADMIN):
+        return
+    if '--all' in args or '--a' in args:
+        res = await guild_service.clear_guild_config(msg.ctx.guild.id)
+    else:
+        res = await guild_service.clear_guild_config_by_key(msg.ctx.guild.id, args[0])
+    await msg.reply("操作出错，请联系管理员" if res is None else "操作成功")
+
+
 @bot.command(name="assign", aliases=['as'])
 async def assign(msg: Message):
     if not await check_authority(msg, AUTH.STAFF | AUTH.ADMIN):
@@ -354,19 +385,19 @@ async def onclick(b: Bot, event: Event):
         return True
 
     log.info(get_time() + 'event received... body is:\n' + str(event.body))
-
+    guild_id = event.body['guild_id']
     if event.body['value'].startswith('create_ticket_'):
         # 这是新的需求，开票只能由白名单玩家进行
-        try:
-            authrized_role = config["create_ticket_role"]
-            if not await has_role(b=b, event=event, role=config['create_ticket_role']):
-                channel = await b.client.fetch_public_channel(event.body['target_id'])
-                await channel.send("您没有权限进行此操作", temp_target_id=event.body['user_id'])
-                return
-        except KeyError as e:
-            log.warning(
-                f"Create Ticket's Role white list is not set, to set the role,"
-                f" open config and set 'create_ticket_role' field.")
+        whitelistmode = await guild_service.get_guild_config(guild_id, "whitelist")
+        if whitelistmode is not None and whitelistmode.lower() in ("true", "on"):
+            try:
+                authorized_role = await guild_service.get_guild_config(guild_id, "create_ticket_role")
+                if authorized_role is None or not await has_role(b=b, event=event, role=authorized_role):
+                    channel = await b.client.fetch_public_channel(event.body['target_id'])
+                    await channel.send("您没有权限进行此操作", temp_target_id=event.body['user_id'])
+                    return
+            except KeyError as e:
+                log.warning(f"Error occurred applying ticket, please see log file.")
 
         # check if role exists
         args = event.body['value'].split('_')
@@ -445,10 +476,10 @@ async def onclick(b: Bot, event: Event):
 # #########################################################################################
 # 测试指令
 # #########################################################################################
-@bot.command(name='hello')
+@bot.command(name='hello', aliases=['ping', 'h'])
 async def world(msg: Message):
     roles = await msg.ctx.guild.fetch_roles()
-    await msg.reply("world")
+    await msg.reply("Online")
 
 
 # #########################################################################################

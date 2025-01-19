@@ -254,8 +254,8 @@ async def create_ticket(b: Bot, event: Event, ticket_role: Union[list, None] = N
 
         # config中填写"new_ticket"字段可以自动发送其中的消息
         try:
-            if 'new_ticket' in config and config['new_ticket'] != "":
-                await cnl.send(config['new_ticket'], type=MessageTypes.KMD)
+            if 'new_ticket' in guild_service[guild.id] and guild_service[guild.id]['new_ticket'] != "":
+                await cnl.send(guild_service[guild.id]['new_ticket'], type=MessageTypes.KMD)
             else:
                 pass
         except KeyError as e:

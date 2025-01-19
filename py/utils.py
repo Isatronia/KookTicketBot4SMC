@@ -108,6 +108,7 @@ async def has_role(role: str = None, msg: Message = None, event: Event = None, b
             if r.name == role and r.id in user.roles:
                 return True
         return False
+    return False
         # roles = event.body.
 
 
