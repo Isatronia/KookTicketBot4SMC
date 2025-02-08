@@ -43,7 +43,7 @@ async def gen_basic_manual(user: User):
     cd.append(Module.Header('帮助手册'))
     cont = ""
     # 从特定文件读取
-    with open(PATH.MAN_DATA, 'r', encoding='utf-8') as f:
+    with open(PATH.MAN_DATA_PATH, 'r', encoding='utf-8') as f:
         for line in f:
             cont = cont + line
     cd.append(Module.Section(Element.Text(content=cont, type=Types.Text.KMD)))
@@ -57,7 +57,7 @@ async def manual(msg: Message, txt: str):
         await msg.reply(await gen_basic_manual(msg.author), is_temp=True)
     else:
         try:
-            with open(PATH.MAN_PATH + txt + '.man') as f:
+            with open(PATH.MAN_PATH_PATH + txt + '.man') as f:
                 cm = CardMessage()
                 cd = Card()
                 cd.append(Module.Header('帮助手册'))

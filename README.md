@@ -119,7 +119,7 @@ pip3 install khl.py
 
 ---
 
-# 附录 Config文件的内容
+# 附录I Config文件的内容
 
 简体中文：
 ```json
@@ -135,4 +135,17 @@ pip3 install khl.py
 }
 ```
 
- 
+ # 附录II 有效的服务器内配置内容
+
+这部分内容请管理员使用/setKey或/config指令配置
+
+## whitelist 
+> 有效值： "on", "true" 
+> 
+> 效果： 开启白名单功能，只有指定角色才能开票。
+> 
+> 示例： /config whitelist: on
+
+- create_ticket_role
+有效值： 字符串
+- 

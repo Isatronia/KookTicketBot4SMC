@@ -41,7 +41,7 @@ class UserServiceImpl:
     
     def _load(self):
         try:
-            with open(PATH.USER_DATA, 'r', encoding='utf-8') as f:
+            with open(PATH.USER_DATA_PATH, 'r', encoding='utf-8') as f:
                 UserServiceImpl._data = json.load(f)
         except FileNotFoundError:
             log.warning(
@@ -51,10 +51,10 @@ class UserServiceImpl:
     
     def _store(self):
         try:
-            with open(PATH.USER_DATA, 'w', encoding='utf-8') as f:
+            with open(PATH.USER_DATA_PATH, 'w', encoding='utf-8') as f:
                 json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
         except FileNotFoundError:
-            log.error(f"Could not create file {PATH.USER_DATA}, please check env.")
+            log.error(f"Could not create file {PATH.USER_DATA_PATH}, please check env.")
         except BaseException as e:
             log.error(e)
     

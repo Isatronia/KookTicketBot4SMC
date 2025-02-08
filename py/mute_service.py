@@ -56,14 +56,14 @@ class MuteServiceImpl:
         if self._get_data() is None:
             try:
                 if self._get_data() is None:
-                    with open(PATH.MUTE_DATA, 'r', encoding='utf-8') as f:
+                    with open(PATH.MUTE_DATA_PATH, 'r', encoding='utf-8') as f:
                         MuteServiceImpl._data = json.load(f)
             except FileNotFoundError:
                 log.error(f"Mute Data file not found. Initializing...")
                 MuteServiceImpl._data = {}
 
     def _store(self):
-        with open(PATH.MUTE_DATA, 'w', encoding='utf-8') as f:
+        with open(PATH.MUTE_DATA_PATH, 'w', encoding='utf-8') as f:
             json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
 
     def _get_data(self):

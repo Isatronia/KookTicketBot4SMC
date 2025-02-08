@@ -78,7 +78,7 @@ class CdkServiceImpl:
 
     def _load(self):
         try:
-            with open(PATH.CDK_PATH, 'r', encoding='utf-8') as f:
+            with open(PATH.CDK_PATH_PATH, 'r', encoding='utf-8') as f:
                 CdkServiceImpl._data = json.load(f)
                 pass
         except FileNotFoundError:
@@ -87,7 +87,7 @@ class CdkServiceImpl:
             CdkServiceImpl._data = {}
 
     def _store(self):
-        with open(PATH.CDK_PATH, 'w', encoding='utf-8') as f:
+        with open(PATH.CDK_PATH_PATH, 'w', encoding='utf-8') as f:
             json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
 
     async def check_cdk(self, cdk: str) -> bool:

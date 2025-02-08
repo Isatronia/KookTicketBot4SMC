@@ -48,7 +48,7 @@ class GuildServiceImpl:
 
     def _load(self):
         try:
-            with open(PATH.GUILD_DATA, 'r', encoding='utf-8') as f:
+            with open(PATH.GUILD_DATA_PATH, 'r', encoding='utf-8') as f:
                 GuildServiceImpl._data = json.load(f)
                 pass
         except FileNotFoundError:
@@ -58,7 +58,7 @@ class GuildServiceImpl:
 
     def _store(self):
         try:
-            with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
+            with open(PATH.GUILD_DATA_PATH, 'w', encoding='utf-8') as f:
                 json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
         except Exception as e:
             log.error(str(e))
@@ -257,7 +257,7 @@ class GuildServiceImpl:
 
             await user_service.open(user_id, guild_id)
             self._get_data()[guild_id]['cnt'] += 1
-            with open(PATH.GUILD_DATA, 'w', encoding='utf-8') as f:
+            with open(PATH.GUILD_DATA_PATH, 'w', encoding='utf-8') as f:
                 json.dump(self._get_data(), f, ensure_ascii=False, indent=4)
             return self._get_data()[guild_id]['cnt']
 

@@ -19,7 +19,7 @@ from typing import Union
 
 from khl import User, Guild, Message, Event, Bot
 
-from .value import ROLE, AUTH
+from value import ROLE, AUTH
 
 master_id = '859596959'
 
