@@ -167,8 +167,6 @@ async def list_role(msg: Message):
         )
     )
     for k in roles:
-        # cont = f"ID: [{k}] - TAG: [{roles[k]['tag']}]"
-        # cd.append(Module.Section(Element.Text(content=cont, type=Types.Text.KMD)))
         cd.append(
             Module.Section(
                 Struct.Paragraph(

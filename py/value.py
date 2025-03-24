@@ -21,14 +21,18 @@ class AUTH:
 
 # 配置文件路径
 class PATH:
-    BASE_PATH = os.getcwd()
-    GUILD_DATA = os.getcwd() + '/cfg/data.json'
-    USER_DATA = os.getcwd() + '/cfg/user.json'
-    MUTE_DATA = os.getcwd() + '/cfg/mute.json'
-    MAN_DATA = os.getcwd() + '/README.md'
+    SCRIPT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    GUILD_DATA = SCRIPT_PATH + '/cfg/data.json'
+    USER_DATA = SCRIPT_PATH + '/cfg/user.json'
+    MUTE_DATA = SCRIPT_PATH + '/cfg/mute.json'
+    MAN_DATA = SCRIPT_PATH + '/README.md'
+    CDK_PATH = SCRIPT_PATH + '/cfg/cdk.json'
+
     MAN_PATH = os.getcwd() + '/cfg/man/'
-    CDK_PATH = os.getcwd() + '/cfg/cdk.json'
-    WORK_DIRs = [MAN_PATH, BASE_PATH + '/log/']
+    LOG_DIRECTORY = SCRIPT_PATH + '/log/'
+    TICKET_DATA_DIRECTORY = SCRIPT_PATH + '/cfg/tickets/'
+    WORK_DIRs = [MAN_PATH, LOG_DIRECTORY, TICKET_DATA_DIRECTORY]
 
 
 # 角色标识

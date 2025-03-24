@@ -47,7 +47,6 @@ class ActivateTooFastError(Exception):
     def __init__(self, info: str = None):
         super().__init__(info)
         pass
-
     pass
 
 

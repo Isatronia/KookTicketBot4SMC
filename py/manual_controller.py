@@ -41,7 +41,7 @@ async def manual(msg: Message, txt: str):
         await msg.reply(await gen_basic_manual(msg.author), is_temp=True)
     else:
         try:
-            with open(PATH.MAN_PATH_PATH + txt + '.man') as f:
+            with open(PATH.MAN_PATH_DIRECTORY + txt + '.man') as f:
                 cm = CardMessage()
                 cd = Card()
                 cd.append(Module.Header('帮助手册'))
