@@ -30,7 +30,7 @@ data.json - GUILD DATA
 - create_ticket 哪个角色可以创建 Ticket
 '''
 
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 
 
 class GuildServiceImpl:
