@@ -9,18 +9,17 @@
 2022/7/8 11:32   ishgrina   1.0         None
 '''
 # import lib
-import json
+
 import logging
 import os
 import random
-import signal
-import asyncio
 import threading
 from logging.handlers import TimedRotatingFileHandler
 
 # import khl.py
 from khl import Bot, Message, Event, EventTypes
 from khl.card import CardMessage, Card, Module, Element, Types, Struct
+from py.value import AUTH, ROLE, config
 
 # #############################################################################
 # 初始化程序代码
@@ -44,7 +43,9 @@ log = logging.getLogger(__name__)
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 logging.info(f"Current working directory is: {os.getcwd()}")
 
+# #############################################################################
 # import coded scripts.
+# #############################################################################
 import py.ticket_controller as ticket_controller
 from py.cdk_controller import generate_cdk, activate_cdk
 from py.guild_service import guild_service
@@ -53,7 +54,6 @@ from py.mute_controller import mute_user, unmute_user, check_all, mute_suspend
 from py.parser import timeParser, get_time, extract_ticket_prefix
 from py.user_service import user_service
 from py.utils import check_authority, getUserGuildAuthority, has_role
-from py.value import AUTH, ROLE, config
 
 # 全局变量定义
 # 初始化机器人

@@ -21,12 +21,14 @@ class AUTH:
 
 # 配置文件路径
 class PATH:
+    BASE_PATH = os.getcwd()
     GUILD_DATA = os.getcwd() + '/cfg/data.json'
     USER_DATA = os.getcwd() + '/cfg/user.json'
     MUTE_DATA = os.getcwd() + '/cfg/mute.json'
     MAN_DATA = os.getcwd() + '/README.md'
     MAN_PATH = os.getcwd() + '/cfg/man/'
     CDK_PATH = os.getcwd() + '/cfg/cdk.json'
+    WORK_DIRs = [MAN_PATH, BASE_PATH + '/log/']
 
 
 # 角色标识
