@@ -54,12 +54,12 @@ class TicketServiceImpl:
                 TicketServiceImpl._ticket_log[ticket.guild_id][ticket.ticket_id] = ticket
                 TicketServiceImpl._ticket_channels.add(ticket.channel_id)
 
-    async def close_ticket(self, guild_id: int, ticket_id: int):
+    async def close_ticket(self, guild_id: str, ticket_id: str):
         async with self._ticket_update_lock:
             if isinstance(TicketServiceImpl._ticket_log[guild_id][ticket_id], Ticket):
                 TicketServiceImpl._ticket_log[guild_id][ticket_id].state = TKSTAT.CLOSED
 
-    async def open_ticket(self, guild_id: int, ticket_id: int, channel_id: int, applier: int):
+    async def open_ticket(self, guild_id: str, ticket_id: str, channel_id: str, applier: str):
         async with self._ticket_update_lock:
             # Create new ticket.
             ticket = Ticket(ticket_id=ticket_id,

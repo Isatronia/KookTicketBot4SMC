@@ -1,0 +1,5 @@
+/cfg/**
+!/cfg/
+!/cfg/man/
+!/cfg/man/Readme En.md
+!/cfg/man/Readme Zh.md

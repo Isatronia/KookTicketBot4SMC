@@ -29,7 +29,7 @@ class TKSTAT:
 
 class Ticket:
 
-    def __init__(self, ticket_id: int = None, guild_id: int = None, channel_id: int = None, applier: int = None, state: int = None,
+    def __init__(self, ticket_id: int = None, guild_id: str = None, channel_id: str = None, applier: str = None, state: int = None,
                  msg_log: list = None):
         # 票的id
         self.ticket_id = ticket_id
